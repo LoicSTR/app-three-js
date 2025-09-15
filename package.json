@@ -1,0 +1,36 @@
+{
+  "private": true,
+  "name": "three-app",
+  "description": "Three app using vite and typescript",
+  "author": "Julien Dargelos <hello@julien.gl>",
+  "license": "MIT",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tweakpane/core": "^2.0.5",
+    "@tweakpane/plugin-essentials": "^0.2.1",
+    "camera-controls": "^3.1.0",
+    "postprocessing": "^6.37.8",
+    "three": "^0.173.0",
+    "three-custom-shader-material": "^6.3.7",
+    "tweakpane": "^4.0.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.4.0",
+    "@types/three": "^0.173.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5",
+    "vite-plugin-glsl": "^1.5.1",
+    "vite-plugin-static-copy": "^3.1.2",
+    "vite-tsconfig-paths": "^5.1.4"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@10.2.0+sha512.0d27364e0139c6aadeed65ada153135e0ca96c8da42123bd50047f961339dc7a758fc2e944b428f52be570d1bd3372455c1c65fa2e7aa0bfbf931190f9552001"
+}
