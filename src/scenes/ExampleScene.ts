@@ -1,11 +1,4 @@
-import {
-  Scene,
-  Mesh,
-  TorusKnotGeometry,
-  MeshStandardMaterial,
-  PointLight,
-  PerspectiveCamera,
-} from "three";
+import { Scene, PointLight, PerspectiveCamera } from "three";
 
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
