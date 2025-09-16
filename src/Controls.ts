@@ -46,9 +46,27 @@ export class Controls extends CameraControls implements Lifecycle {
 
     this.clock = clock;
     this.element = element;
-    this.minDistance = 4;
-    this.maxDistance = 45;
-    // this.setPosition(0, 0, -1);
+
+    // this.setPosition(-0.72, 0.27, 0.45);
+    this.setPosition(0, 1.2, -0.01);
+    // const startPos = new Vector3(-0.72, 0.27, 0.45);
+    // const gamePos = new Vector3(0, 1.2, -0.01);
+    // const target = new Vector3(0, 0, 0);
+
+    this.mouseButtons.left = CameraControls.ACTION.NONE;
+    this.mouseButtons.right = CameraControls.ACTION.NONE;
+    this.mouseButtons.wheel = CameraControls.ACTION.NONE;
+    this.touches.one = CameraControls.ACTION.NONE;
+    this.touches.two = CameraControls.ACTION.NONE;
+    this.touches.three = CameraControls.ACTION.NONE;
+
+    this.addEventListener("rest", () => {
+      this.camera.position.set(-0.72, 0.27, 0.45);
+    });
+
+    // cameraControls.addEventListener("change", () => {
+    //   console.log(cameraControls.getPosition(cameraControls._position0));
+    // });
   }
 
   public start(): void {
@@ -61,6 +79,8 @@ export class Controls extends CameraControls implements Lifecycle {
   }
 
   public update = (): boolean => {
+    console.log(this.getPosition(this._position0));
+
     return super.update(this.clock.delta / 1000);
   };
 }
