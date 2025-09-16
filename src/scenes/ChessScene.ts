@@ -1,10 +1,17 @@
-import { Scene, PointLight, PerspectiveCamera } from "three";
+import {
+  Scene,
+  AmbientLight,
+  PerspectiveCamera,
+  AxesHelper,
+  Vector3,
+} from "three";
 
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 import type { Viewport, Clock, Lifecycle } from "~/core";
 
-import chessSet from "/assets/models/chess_set_4k.gltf/chess_set_4k.gltf";
+import chessSetSrc from "/assets/models/chess_set_4k.gltf/chess_set_4k.gltf";
+import type { GLTF } from "three/examples/jsm/Addons.js";
 
 export interface MainSceneParamaters {
   clock: Clock;
@@ -12,13 +19,11 @@ export interface MainSceneParamaters {
   viewport: Viewport;
 }
 
-export class ExampleScene extends Scene implements Lifecycle {
+export class ChessScene extends Scene implements Lifecycle {
   public clock: Clock;
   public camera: PerspectiveCamera;
   public viewport: Viewport;
-  public light1: PointLight;
-  public light2: PointLight;
-  public light3: PointLight;
+  public light1: AmbientLight;
 
   public constructor({ clock, camera, viewport }: MainSceneParamaters) {
     super();
@@ -27,23 +32,25 @@ export class ExampleScene extends Scene implements Lifecycle {
     this.camera = camera;
     this.viewport = viewport;
 
-    this.light1 = new PointLight(0xffbbff, 0.5, 30, 0.5);
+    const axesHelper = new AxesHelper(5);
+    this.add(axesHelper);
+
+    this.light1 = new AmbientLight(0xf0ffff, 0.5);
     this.light1.position.set(2, 0, -2);
 
-    this.light2 = new PointLight(0xbbffff, 0.5, 30, 0.5);
-    this.light2.position.set(-2, 4, 2);
+    this.camera.position.set(1.3, 1, 0.5);
+    this.camera.lookAt(new Vector3(0, 0, 0));
 
-    this.light3 = new PointLight(0xffffff, 1, 30, 2);
-    this.light3.position.set(0, 5, 0);
-
-    this.add(this.light1, this.light2, this.light3);
+    this.add(this.light1);
   }
 
   public async load(): Promise<void> {
-    const gltfLoader = new GLTFLoader();
-    gltfLoader.load(chessSet, (gltf) => {
-      this.add(gltf.scene);
+    const gltf = await new Promise<GLTF>((resolve, reject) => {
+      const loader = new GLTFLoader();
+      loader.load(chessSetSrc, resolve, undefined, reject);
     });
+
+    this.add(gltf.scene);
   }
 
   public update(): void {
@@ -51,8 +58,7 @@ export class ExampleScene extends Scene implements Lifecycle {
 
     this.light1.position.x = Math.cos(theta + this.clock.elapsed * 0.001) * 2;
     this.light1.position.z = Math.sin(theta + this.clock.elapsed * 0.0005) * 2;
-    this.light2.position.y = Math.sin(theta + this.clock.elapsed * 0.001) * 4;
-    this.light2.position.z = Math.cos(theta + this.clock.elapsed * 0.0005) * 2;
+    // this.camera.rotation.y = Math.tan(theta * 0.5);
   }
 
   public resize(): void {

@@ -9,11 +9,11 @@ import {
   Matrix4,
   Raycaster,
   type PerspectiveCamera,
-  type OrthographicCamera
-} from 'three'
+  type OrthographicCamera,
+} from "three";
 
-import CameraControls from 'camera-controls'
-import type { Clock, Lifecycle } from '~/core'
+import CameraControls from "camera-controls";
+import type { Clock, Lifecycle } from "~/core";
 
 // Improve tree-shaking by only importing the necessary THREE subset instead
 // of the whole namespace
@@ -27,44 +27,40 @@ CameraControls.install({
     Spherical,
     Box3,
     Sphere,
-    Raycaster
-  }
-})
+    Raycaster,
+  },
+});
 
 export interface ControlsParameters {
-  camera: PerspectiveCamera | OrthographicCamera
-  element: HTMLElement
-  clock: Clock
+  camera: PerspectiveCamera | OrthographicCamera;
+  element: HTMLElement;
+  clock: Clock;
 }
 
 export class Controls extends CameraControls implements Lifecycle {
-  public clock: Clock
-  public element: HTMLElement
+  public clock: Clock;
+  public element: HTMLElement;
 
-  public constructor({
-    camera,
-    element,
-    clock
-  }: ControlsParameters) {
-    super(camera)
+  public constructor({ camera, element, clock }: ControlsParameters) {
+    super(camera);
 
-    this.clock = clock
-    this.element = element
-    this.minDistance = 4
-    this.maxDistance = 45
-    this.setPosition(0, 0, -10)
+    this.clock = clock;
+    this.element = element;
+    this.minDistance = 4;
+    this.maxDistance = 45;
+    // this.setPosition(0, 0, -1);
   }
 
   public start(): void {
-    this.disconnect()
-    this.connect(this.element)
+    this.disconnect();
+    this.connect(this.element);
   }
 
   public stop(): void {
-    this.disconnect()
+    this.disconnect();
   }
 
   public update = (): boolean => {
-    return super.update(this.clock.delta / 1000)
-  }
+    return super.update(this.clock.delta / 1000);
+  };
 }
