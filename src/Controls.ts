@@ -14,7 +14,6 @@ import {
 
 import CameraControls from "camera-controls";
 import type { Clock, Lifecycle } from "~/core";
-import { ChessScene } from "~/scenes/ChessScene";
 
 // Improve tree-shaking by only importing the necessary THREE subset instead
 // of the whole namespace
@@ -41,18 +40,16 @@ export interface ControlsParameters {
 export class Controls extends CameraControls implements Lifecycle {
   public clock: Clock;
   public element: HTMLElement;
-  // Smooth transition state
   private startPos: Vector3 = new Vector3(-0.72, 0.27, 0.45);
   private gamePos: Vector3 = new Vector3(0, 1.2, -0.01);
   private desiredPos: Vector3 = this.startPos.clone();
   private currentPos: Vector3 = this.startPos.clone();
   private cameraTarget: Vector3 = new Vector3(0, 0, 0);
-  private lerpSpeed = 6; // higher -> faster
+  private lerpSpeed = 5;
 
   public constructor({ camera, element, clock }: ControlsParameters) {
     super(camera);
 
-    // this.scene = scene;
     this.clock = clock;
     this.element = element;
 

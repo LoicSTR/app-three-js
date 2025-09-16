@@ -42,12 +42,8 @@ export class ChessScene extends Scene implements Lifecycle {
       "/assets/textures/chess_board_nor_4k.jpg"
     );
 
-    const axesHelper = new AxesHelper(5);
-    this.add(axesHelper);
-
-    // this.light1 = new DirectionalLight(0xffffff, 0.25);
-    // this.light1.position.set(0, 1, 0);
     this.light1 = new DirectionalLight(0xffffff, 0.75);
+    // this.light1.position.set(0, 1, 0);
     this.light1.position.set(1, 0.5, 0);
     this.light1.lookAt(new Vector3(0, 0, 0));
 
@@ -58,26 +54,6 @@ export class ChessScene extends Scene implements Lifecycle {
     this.light3 = new DirectionalLight(0xee4b2b, 0.5);
     this.light3.position.set(0, 0.5, 1);
     this.light3.lookAt(new Vector3(0, 0, 0));
-
-    // const sphereSize = 1;
-
-    // const directionalLightHelper1 = new DirectionalLightHelper(
-    //   this.light1,
-    //   sphereSize
-    // );
-    // this.add(directionalLightHelper1);
-
-    // const directionalLightHelper2 = new DirectionalLightHelper(
-    //   this.light2,
-    //   sphereSize
-    // );
-    // // this.add(directionalLightHelper2);
-
-    // const directionalLightHelper3 = new DirectionalLightHelper(
-    //   this.light3,
-    //   sphereSize
-    // );
-    // // this.add(directionalLightHelper3);
 
     this.add(this.light1);
     this.add(this.light2);
@@ -90,14 +66,18 @@ export class ChessScene extends Scene implements Lifecycle {
       loader.load(chessSetSrc, resolve, undefined, reject);
     });
 
-    this.mesh = gltf.scene.children[0] as Mesh<
-      BufferGeometry,
-      MeshStandardMaterial
-    >;
+    gltf.scene.traverse((child) => {
+      if ((child as Mesh).isMesh) {
+        this.mesh = gltf.scene.children[0] as Mesh<
+          BufferGeometry,
+          MeshStandardMaterial
+        >;
+        this.mesh.material.roughness = -7;
+        this.mesh.material.metalness = 7;
+      }
+    });
 
     this.add(gltf.scene);
-    this.mesh.material.roughness = -7;
-    this.mesh.material.metalness = 7;
   }
 
   public update(): void {
