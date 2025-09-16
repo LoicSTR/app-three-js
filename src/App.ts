@@ -59,6 +59,7 @@ export class App implements Lifecycle {
       camera: this.camera,
       element: this.renderer.domElement,
       clock: this.clock,
+      scene: this.scene,
     });
 
     this.loop = new Loop({

@@ -1,78 +1,78 @@
-import { Vector2 } from 'three'
-import { Lifecycle } from './Lifecycle'
+import { Vector2 } from "three";
+import { Lifecycle } from "./Lifecycle";
 
 export interface ViewportParameters {
-  element: Element
-  maximumDpr?: number
-  resize?: () => void
+  element: Element;
+  maximumDpr?: number;
+  resize?: () => void;
 }
 
 export class Viewport implements Lifecycle {
-  public element: Element
-  public maximumDpr: number
-  public size = new Vector2(1, 1)
-  public ratio = 1
-  public dpr = 1
-  public resize: () => void
-  public needsUpdate = false
-  private resizeObserver?: ResizeObserver
+  public element: Element;
+  public maximumDpr: number;
+  public size = new Vector2(1, 1);
+  public ratio = 1;
+  public dpr = 1;
+  public resize: () => void;
+  public needsUpdate = false;
+  private resizeObserver?: ResizeObserver;
 
   public get container(): Element | null {
-    return <Element>this.element.parentNode
+    return <Element>this.element.parentNode;
   }
 
   public constructor({
     element,
     resize,
-    maximumDpr = Infinity
+    maximumDpr = Infinity,
   }: ViewportParameters) {
-    this.element = element
-    this.maximumDpr = maximumDpr
-    this.resize = resize || (() => {})
+    this.element = element;
+    this.maximumDpr = maximumDpr;
+    this.resize = resize || (() => {});
   }
 
   public update(): void {
     if (!this.needsUpdate) {
-      return
+      return;
     }
 
-    this.needsUpdate = false
-    this.resize()
+    this.needsUpdate = false;
+    this.resize();
   }
 
   public start(): void {
-    this.stop()
+    this.stop();
 
     if (!this.container) {
-      return
+      return;
     }
 
-    this.set(this.container.getBoundingClientRect())
+    this.set(this.container.getBoundingClientRect());
 
-    this.resizeObserver = new ResizeObserver(this.resizeObserverCallback)
-    this.resizeObserver.observe(this.container)
+    this.resizeObserver = new ResizeObserver(this.resizeObserverCallback);
+    this.resizeObserver.observe(this.container);
   }
 
   public stop(): void {
-    this.resizeObserver?.disconnect()
-    this.resizeObserver = undefined
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = undefined;
   }
 
   public dispose(): void {
-    this.stop()
+    this.stop();
   }
 
   public set(
-    size: { width: number, height: number },
+    size: { width: number; height: number },
     dpr: number = window.devicePixelRatio || 1
   ): void {
-    this.size.set(size.width, size.height)
-    this.ratio = size.width / size.height
-    this.dpr = Math.min(dpr, this.maximumDpr)
-    this.needsUpdate = true
+    this.size.set(size.width, size.height);
+    this.ratio = size.width / size.height;
+    this.dpr = Math.min(dpr, this.maximumDpr);
+    this.needsUpdate = true;
   }
 
   private resizeObserverCallback = ([entry]: ResizeObserverEntry[]) => {
-    this.set(entry.contentRect)
-  }
+    this.set(entry.contentRect);
+  };
 }

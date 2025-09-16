@@ -14,6 +14,7 @@ import {
 
 import CameraControls from "camera-controls";
 import type { Clock, Lifecycle } from "~/core";
+import { ChessScene } from "~/scenes/ChessScene";
 
 // Improve tree-shaking by only importing the necessary THREE subset instead
 // of the whole namespace
@@ -40,18 +41,22 @@ export interface ControlsParameters {
 export class Controls extends CameraControls implements Lifecycle {
   public clock: Clock;
   public element: HTMLElement;
+  // Smooth transition state
+  private startPos: Vector3 = new Vector3(-0.72, 0.27, 0.45);
+  private gamePos: Vector3 = new Vector3(0, 1.2, -0.01);
+  private desiredPos: Vector3 = this.startPos.clone();
+  private currentPos: Vector3 = this.startPos.clone();
+  private cameraTarget: Vector3 = new Vector3(0, 0, 0);
+  private lerpSpeed = 6; // higher -> faster
 
   public constructor({ camera, element, clock }: ControlsParameters) {
     super(camera);
 
+    // this.scene = scene;
     this.clock = clock;
     this.element = element;
 
-    // this.setPosition(-0.72, 0.27, 0.45);
-    this.setPosition(0, 1.2, -0.01);
-    // const startPos = new Vector3(-0.72, 0.27, 0.45);
-    // const gamePos = new Vector3(0, 1.2, -0.01);
-    // const target = new Vector3(0, 0, 0);
+    this.setPosition(-0.72, 0.27, 0.45);
 
     this.mouseButtons.left = CameraControls.ACTION.NONE;
     this.mouseButtons.right = CameraControls.ACTION.NONE;
@@ -59,27 +64,45 @@ export class Controls extends CameraControls implements Lifecycle {
     this.touches.one = CameraControls.ACTION.NONE;
     this.touches.two = CameraControls.ACTION.NONE;
     this.touches.three = CameraControls.ACTION.NONE;
-
-    this.addEventListener("rest", () => {
-      this.camera.position.set(-0.72, 0.27, 0.45);
-    });
-
-    // cameraControls.addEventListener("change", () => {
-    //   console.log(cameraControls.getPosition(cameraControls._position0));
-    // });
   }
+
+  private onScroll = (): void => {
+    const max = Math.max(
+      1,
+      document.documentElement.scrollHeight - window.innerHeight
+    );
+    let p = Math.min(1, Math.max(0, window.scrollY / max));
+    p = p * p * (3 - 2 * p);
+    this.desiredPos.copy(this.startPos).lerp(this.gamePos, p);
+  };
 
   public start(): void {
     this.disconnect();
     this.connect(this.element);
+    window.addEventListener("scroll", this.onScroll, { passive: true });
   }
 
   public stop(): void {
     this.disconnect();
+    window.removeEventListener("scroll", this.onScroll);
   }
 
   public update = (): boolean => {
-    console.log(this.getPosition(this._position0));
+    const delta = Math.min(1, this.clock.delta / 1000);
+    this.currentPos.lerp(
+      this.desiredPos,
+      1 - Math.exp(-this.lerpSpeed * delta)
+    );
+
+    this.setLookAt(
+      this.currentPos.x,
+      this.currentPos.y,
+      this.currentPos.z,
+      this.cameraTarget.x,
+      this.cameraTarget.y,
+      this.cameraTarget.z,
+      false
+    );
 
     return super.update(this.clock.delta / 1000);
   };
