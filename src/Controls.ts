@@ -41,11 +41,14 @@ export class Controls extends CameraControls implements Lifecycle {
   public clock: Clock;
   public element: HTMLElement;
   private startPos: Vector3 = new Vector3(-0.72, 0.27, 0.45);
-  private gamePos: Vector3 = new Vector3(0, 1.2, -0.01);
+  public gamePos: Vector3 = new Vector3(0, 1.2, -0.01);
   private desiredPos: Vector3 = this.startPos.clone();
-  private currentPos: Vector3 = this.startPos.clone();
+  public currentPos: Vector3 = this.startPos.clone();
   private cameraTarget: Vector3 = new Vector3(0, 0, 0);
   private lerpSpeed = 5;
+  public isAtGameView(threshold = 5e-3): boolean {
+    return this.currentPos.distanceTo(this.gamePos) < threshold;
+  }
 
   public constructor({ camera, element, clock }: ControlsParameters) {
     super(camera);

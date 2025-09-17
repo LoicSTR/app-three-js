@@ -1,4 +1,4 @@
-import { WebGLRenderer, PerspectiveCamera } from "three";
+import { WebGLRenderer, PerspectiveCamera, Vector2 } from "three";
 import { Clock, Loop, Viewport, type Lifecycle } from "~/core";
 import type { GUI } from "~/GUI";
 import { Composer } from "~/Composer";
@@ -21,6 +21,45 @@ export class App implements Lifecycle {
   public viewport: Viewport;
   public scene: ChessScene;
   public gui?: GUI;
+  private pointerNdc: Vector2 = new Vector2();
+  private pointerMoveBound = false;
+
+
+  private onPointerMove = (ev: PointerEvent): void => {
+    const el = this.renderer.domElement as HTMLCanvasElement;
+    const rect = el.getBoundingClientRect();
+    const x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
+    this.pointerNdc.set(x, y);
+
+    const hit = this.scene.pickAt(this.pointerNdc, this.camera);
+    if (hit) {
+      // this.scene.getPieceAt(hit.file, hit.rank)
+      // console.log(`square: ${hit.algebraic}`, hit);
+    }
+  };
+  private onClick = (ev: PointerEvent): void => {
+    const el = this.renderer.domElement as HTMLCanvasElement;
+    const rect = el.getBoundingClientRect();
+    const x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
+    this.pointerNdc.set(x, y);
+
+    const hit = this.scene.pickAt(this.pointerNdc, this.camera);
+    if (hit) {
+      const pieceSelected = this.scene.getPieceAt(hit.file, hit.rank)
+      if (pieceSelected) {
+        localStorage.setItem("pieceSelected", pieceSelected.id)
+      } else {
+        const idPieceSelected = localStorage.getItem("pieceSelected")
+        if (idPieceSelected) {
+          localStorage.removeItem("pieceSelected")
+          const pieceSelected = this.scene.pieceRegistry.get(idPieceSelected)
+          if (pieceSelected) this.scene.animateMove(pieceSelected.id, hit.file, hit.rank)
+        }
+      }
+    }
+  }
 
   public constructor({ canvas, debug = false }: AppParameters = {}) {
     this.debug = debug;
@@ -95,6 +134,12 @@ export class App implements Lifecycle {
     this.controls.stop();
     this.viewport.stop();
     this.loop.stop();
+    if (this.controls.currentPos === this.controls.gamePos) {
+      this.renderer.domElement.removeEventListener(
+        "pointermove",
+        this.onPointerMove
+      );
+    }
   }
 
   /**
@@ -106,6 +151,20 @@ export class App implements Lifecycle {
     this.viewport.update();
     this.scene.update();
     this.composer.update();
+    // console.log(this.controls.isAtGameView());
+
+    if (this.controls.isAtGameView() && !this.pointerMoveBound) {
+      this.renderer.domElement.addEventListener("pointermove", this.onPointerMove);
+      this.pointerMoveBound = true;
+    } else if (!this.controls.isAtGameView() && this.pointerMoveBound) {
+      this.renderer.domElement.removeEventListener("pointermove", this.onPointerMove);
+      this.pointerMoveBound = false;
+    }
+    if (this.controls.isAtGameView()) {
+      this.renderer.domElement.addEventListener('click', this.onClick)
+    } else {
+      this.renderer.domElement.removeEventListener('click', this.onClick)
+    }
   }
 
   /**
