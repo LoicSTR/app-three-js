@@ -19,3 +19,9 @@ startBtn.addEventListener("click", () => {
     behavior: "smooth",
   });
 });
+
+const resetBtn = gameContainer.querySelector("button") as HTMLButtonElement;
+resetBtn.addEventListener("click", () => {
+  window.location.reload();
+  scrollTo(0, 0);
+});

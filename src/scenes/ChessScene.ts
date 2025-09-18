@@ -67,6 +67,34 @@ interface PieceRecord {
 type PieceRegistry = Map<string, PieceRecord>;
 type BoardState = (string | null)[][];
 
+type Piece = {
+  type: PieceType;
+  color: PieceColor;
+  file: number;
+  rank: number;
+  index: number;
+};
+
+export const position: Piece[] = [
+  { type: "king", color: "white", file: 5, rank: 0, index: 0 },
+  { type: "rook", color: "white", file: 3, rank: 6, index: 1 },
+  { type: "rook", color: "white", file: 1, rank: 6, index: 2 },
+  { type: "knight", color: "white", file: 4, rank: 3, index: 1 },
+  { type: "pawn", color: "white", file: 7, rank: 1, index: 1 },
+  { type: "pawn", color: "white", file: 6, rank: 1, index: 2 },
+  { type: "pawn", color: "white", file: 5, rank: 1, index: 3 },
+  { type: "pawn", color: "white", file: 4, rank: 5, index: 4 },
+  { type: "pawn", color: "white", file: 1, rank: 4, index: 5 },
+
+  { type: "king", color: "black", file: 2, rank: 7, index: 0 },
+  { type: "rook", color: "black", file: 4, rank: 7, index: 1 },
+  { type: "rook", color: "black", file: 0, rank: 7, index: 2 },
+  { type: "knight", color: "black", file: 4, rank: 4, index: 1 },
+  { type: "pawn", color: "black", file: 7, rank: 5, index: 1 },
+  { type: "pawn", color: "black", file: 6, rank: 4, index: 2 },
+  { type: "pawn", color: "black", file: 0, rank: 6, index: 3 },
+];
+
 export class ChessScene extends Scene implements Lifecycle {
   public clock: Clock;
   public camera: PerspectiveCamera;
@@ -238,76 +266,42 @@ export class ChessScene extends Scene implements Lifecycle {
   public initialSquareFor(
     type: PieceType,
     color: PieceColor,
-    index?: number
-  ): { file: number; rank: number } {
+    index?: number,
+    isCustom: boolean = false
+  ): { file: number; rank: number } | null {
     const back = color === "white" ? 0 : 7;
     const pawn = color === "white" ? 1 : 6;
     const idx = Number.isFinite(index as number) ? (index as number) : 0;
 
-    switch (type) {
-      case "pawn": {
-        const file = Math.max(0, Math.min(7, idx - 1));
-        return { file, rank: pawn };
-      }
-      case "king":
-        return { file: 3, rank: back };
-      case "queen":
-        return { file: 4, rank: back };
-      case "rook": {
-        const side = idx % 2;
-        return { file: side === 0 ? 0 : 7, rank: back };
-      }
-      case "knight": {
-        const side = idx % 2;
-        return { file: side === 0 ? 1 : 6, rank: back };
-      }
-      case "bishop": {
-        const side = idx % 2;
-        return { file: side === 0 ? 2 : 5, rank: back };
-      }
-      default:
-        return { file: 0, rank: back };
-    }
-  }
-
-  public squareForFromFEN(
-    fen: string,
-    type: PieceType,
-    color: PieceColor,
-    index: number = 1
-  ): { file: number; rank: number } | null {
-    const rows = fen.split(" ")[0].split("/");
-    let occurrences = 0;
-
-    const map: Record<string, PieceType> = {
-      p: "pawn",
-      r: "rook",
-      n: "knight",
-      b: "bishop",
-      q: "queen",
-      k: "king",
-    };
-
-    for (let rowIndex = 0; rowIndex < 8; rowIndex++) {
-      let file = 0;
-      for (const char of rows[rowIndex]) {
-        if (/\d/.test(char)) {
-          file += parseInt(char, 10);
-        } else {
-          const pieceColor: PieceColor =
-            char === char.toUpperCase() ? "white" : "black";
-          const pieceType = map[char.toLowerCase()];
-          const rank = 7 - rowIndex;
-
-          if (pieceColor === color && pieceType === type) {
-            occurrences++;
-            if (occurrences === index) {
-              return { file, rank };
-            }
-          }
-
-          file++;
+    if (isCustom) {
+      const custom = position.find(
+        (p) => p.type === type && p.color === color && p.index === idx
+      );
+      if (custom) return { file: custom.file, rank: custom.rank };
+    } else {
+      switch (type) {
+        case "pawn": {
+          const file = Math.max(0, Math.min(7, idx - 1));
+          return { file, rank: pawn };
         }
+        case "king":
+          return { file: 3, rank: back };
+        case "queen":
+          return { file: 4, rank: back };
+        case "rook": {
+          const side = idx % 2;
+          return { file: side === 0 ? 0 : 7, rank: back };
+        }
+        case "knight": {
+          const side = idx % 2;
+          return { file: side === 0 ? 1 : 6, rank: back };
+        }
+        case "bishop": {
+          const side = idx % 2;
+          return { file: side === 0 ? 2 : 5, rank: back };
+        }
+        default:
+          return { file: 0, rank: back };
       }
     }
     return null;
@@ -393,6 +387,12 @@ export class ChessScene extends Scene implements Lifecycle {
     this.applyShaderToTargets();
     this.shader.uniforms.uCheckmate.value = 1.0;
     this.shader.uniforms.uTime.value = 0.0;
+    const endText = document.querySelector(".endText") as HTMLElement;
+    endText.innerText = "You win!";
+    endText.style.opacity = "1.0";
+    this.light1.intensity = 0;
+    this.light2.intensity = 0.75;
+    this.light3.intensity = 0.75;
   }
 
   public async load(): Promise<void> {
@@ -455,7 +455,7 @@ export class ChessScene extends Scene implements Lifecycle {
           ? `${color[0]}_${type}_${rawIndex}`
           : `${color[0]}_${type}`;
 
-        const sq = this.initialSquareFor(type, color, rawIndex);
+        const sq = this.initialSquareFor(type, color, rawIndex, true);
         if (!sq) {
           mesh.visible = false;
           return;
@@ -466,7 +466,6 @@ export class ChessScene extends Scene implements Lifecycle {
         mesh.position.set(pos.x, mesh.position.y, pos.z);
         mesh.visible = true;
         mesh.updateMatrixWorld();
-        console.log(mesh);
 
         this.pieceRegistry.set(id, { id, type, color, file, rank, mesh });
         this.boardState[rank][file] = id;
@@ -498,9 +497,8 @@ export class ChessScene extends Scene implements Lifecycle {
       const t = (performance.now() - this.checkmateFx.t0) / 1000;
       this.shader.uniforms.uTime.value = t;
 
-      // rampe simple 0 -> 1 -> 0 sur effectDuration
       const p = Math.min(1, t / this.effectDuration);
-      const strength = Math.sin(p * 3.14159265); // cloche
+      const strength = Math.sin(p * 3.14159265);
       this.shader.uniforms.uGlowStrength.value = strength;
 
       if (t > this.effectDuration) {

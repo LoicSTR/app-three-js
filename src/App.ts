@@ -25,7 +25,9 @@ export class App implements Lifecycle {
   public gui?: GUI;
   private pointerNdc: Vector2 = new Vector2();
   private pointerMoveBound = false;
-  private chess = new Chess();
+  private chess = new Chess(
+    "3r1k1r/4R1Rp/p2P4/1p1n2P1/3N4/8/PPP5/2K5 w - - 0 1"
+  );
   private selectedSquare: string | null = null;
 
   private onPointerMove = (ev: PointerEvent): void => {
@@ -74,6 +76,10 @@ export class App implements Lifecycle {
     this.scene.animateMove(id, hit.file, hit.rank);
     if (this.chess.isCheckmate()) {
       this.scene.triggerCheckmateEffect();
+    } else {
+      const endText = document.querySelector(".endText") as HTMLElement;
+      endText.innerText = "Game Over";
+      endText.style.opacity = "1.0";
     }
   };
 
