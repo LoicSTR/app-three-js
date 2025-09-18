@@ -26,7 +26,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 import type { Viewport, Clock, Lifecycle } from "~/core";
 
-import chessSetSrc from "/assets/models/chess_set_4k.gltf/chess_set_4k.gltf";
+import chessSetSrc from "~~/assets/models/chess_set_4k.gltf/chess_set_4k.gltf";
 import type { GLTF } from "three/examples/jsm/Addons.js";
 
 import vertexShader from "~/shaders/chess.vert";
