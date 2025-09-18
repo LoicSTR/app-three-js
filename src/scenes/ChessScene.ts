@@ -2,7 +2,6 @@ import {
   Scene,
   DirectionalLight,
   PerspectiveCamera,
-  // AxesHelper,
   Vector3,
   Vector2,
   TextureLoader,
@@ -20,7 +19,7 @@ import {
   BufferAttribute,
   ShaderMaterial,
   type Texture,
-  GLSL3,
+  Object3D,
 } from "three";
 
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -30,26 +29,27 @@ import type { Viewport, Clock, Lifecycle } from "~/core";
 import chessSetSrc from "/assets/models/chess_set_4k.gltf/chess_set_4k.gltf";
 import type { GLTF } from "three/examples/jsm/Addons.js";
 
-// import CustomShaderMaterial from "three-custom-shader-material/vanilla";
-
 import vertexShader from "~/shaders/chess.vert";
 import fragmentShader from "~/shaders/chess.frag";
 
 import noiseMapSrc from "~~/assets/textures/perlin-noise.png";
 
+import {
+  FILES,
+  RANKS,
+  CELL,
+  ORIGIN,
+  squareToWorld,
+  toAlgebraic,
+  fileOf,
+  rankOf,
+  getSquareWorldPosition,
+} from "~/utils/utils";
+
 export interface MainSceneParamaters {
   clock: Clock;
   camera: PerspectiveCamera;
   viewport: Viewport;
-}
-
-const FILES = 8,
-  RANKS = 8;
-const CELL = 0.057888;
-const ORIGIN = new Vector3(-0.2026083, 0.0173927, -0.2026083);
-
-function squareToWorld(file: number, rank: number, y = ORIGIN.y) {
-  return new Vector3(ORIGIN.x + file * CELL, y, ORIGIN.z + rank * CELL);
 }
 
 type PieceColor = "white" | "black";
@@ -82,7 +82,10 @@ export class ChessScene extends Scene implements Lifecycle {
   private highlightedIndex: number | null = null;
   public shader!: ShaderMaterial;
   private checkmateFx = { active: false, t0: 0 };
-
+  private shaderTargets: Set<Mesh> = new Set();
+  private originalMaterials = new Map<Mesh, any>();
+  private effectDuration = 5.0;
+  public toOutline: Object3D[] = [];
   public boardState: BoardState = Array.from({ length: 8 }, () =>
     Array(8).fill(null)
   );
@@ -95,15 +98,11 @@ export class ChessScene extends Scene implements Lifecycle {
     this.camera = camera;
     this.viewport = viewport;
 
-    // this.background = new TextureLoader().load(
-    //   "/assets/textures/chess_board_nor_4k.jpg"
-    // );
-
-    // const axesHelper = new AxesHelper(10);
-    // this.add(axesHelper);
+    this.background = new TextureLoader().load(
+      "/assets/textures/chess_board_nor_4k.jpg"
+    );
 
     this.light1 = new DirectionalLight(0xffffff, 0.75);
-    // this.light1.position.set(0, 1, 0);
     this.light1.position.set(1, 0.5, 0);
     this.light1.lookAt(new Vector3(0, 0, 0));
 
@@ -157,7 +156,7 @@ export class ChessScene extends Scene implements Lifecycle {
         const isDark = (f + r) % 2 === 1;
         const base = isDark ? new Color(0x000000) : new Color(0xffffff);
         this.tiles.setColorAt(idx, base);
-        // mirror to baseColors array for fast restore
+
         const i3 = idx * 3;
         instanceColors[i3 + 0] = base.r;
         instanceColors[i3 + 1] = base.g;
@@ -173,36 +172,6 @@ export class ChessScene extends Scene implements Lifecycle {
     this.tiles.instanceColor!.needsUpdate = true;
 
     this.add(this.tiles);
-  }
-
-  // --- Board utilities ---
-  public squareIndex(file: number, rank: number): number {
-    return rank * FILES + file;
-  }
-
-  public fileOf(index: number): number {
-    return index % FILES;
-  }
-
-  public rankOf(index: number): number {
-    return Math.floor(index / FILES);
-  }
-
-  public toAlgebraic(file: number, rank: number): string {
-    const flippedFile = FILES - 1 - file;
-    const fileChar = String.fromCharCode("a".charCodeAt(0) + flippedFile);
-    return `${fileChar}${rank + 1}`;
-  }
-
-  public fromAlgebraic(square: string): { file: number; rank: number } {
-    const flipped = square.charCodeAt(0) - "a".charCodeAt(0);
-    const file = FILES - 1 - flipped;
-    const rank = parseInt(square[1]) - 1;
-    return { file, rank };
-  }
-
-  public getSquareWorldPosition(file: number, rank: number): Vector3 {
-    return squareToWorld(file, rank, ORIGIN.y);
   }
 
   private highlightIndex(index: number | null): void {
@@ -256,10 +225,10 @@ export class ChessScene extends Scene implements Lifecycle {
       return null;
     }
 
-    const file = this.fileOf(index);
-    const rank = this.rankOf(index);
+    const file = fileOf(index);
+    const rank = rankOf(index);
     const world = squareToWorld(file, rank, ORIGIN.y + 0.0005);
-    const algebraic = this.toAlgebraic(file, rank);
+    const algebraic = toAlgebraic(file, rank);
 
     this.highlightIndex(index);
 
@@ -281,9 +250,9 @@ export class ChessScene extends Scene implements Lifecycle {
         return { file, rank: pawn };
       }
       case "king":
-        return { file: 4, rank: back };
-      case "queen":
         return { file: 3, rank: back };
+      case "queen":
+        return { file: 4, rank: back };
       case "rook": {
         const side = idx % 2;
         return { file: side === 0 ? 0 : 7, rank: back };
@@ -299,6 +268,49 @@ export class ChessScene extends Scene implements Lifecycle {
       default:
         return { file: 0, rank: back };
     }
+  }
+
+  public squareForFromFEN(
+    fen: string,
+    type: PieceType,
+    color: PieceColor,
+    index: number = 1
+  ): { file: number; rank: number } | null {
+    const rows = fen.split(" ")[0].split("/");
+    let occurrences = 0;
+
+    const map: Record<string, PieceType> = {
+      p: "pawn",
+      r: "rook",
+      n: "knight",
+      b: "bishop",
+      q: "queen",
+      k: "king",
+    };
+
+    for (let rowIndex = 0; rowIndex < 8; rowIndex++) {
+      let file = 0;
+      for (const char of rows[rowIndex]) {
+        if (/\d/.test(char)) {
+          file += parseInt(char, 10);
+        } else {
+          const pieceColor: PieceColor =
+            char === char.toUpperCase() ? "white" : "black";
+          const pieceType = map[char.toLowerCase()];
+          const rank = 7 - rowIndex;
+
+          if (pieceColor === color && pieceType === type) {
+            occurrences++;
+            if (occurrences === index) {
+              return { file, rank };
+            }
+          }
+
+          file++;
+        }
+      }
+    }
+    return null;
   }
 
   public getPieceAt(file: number, rank: number): PieceRecord | null {
@@ -318,7 +330,7 @@ export class ChessScene extends Scene implements Lifecycle {
     const occupyingId = this.boardState[toRank][toFile];
 
     const start = piece.mesh.position.clone();
-    const endWorld = this.getSquareWorldPosition(toFile, toRank);
+    const endWorld = getSquareWorldPosition(toFile, toRank);
     const end = new Vector3(endWorld.x, start.y, endWorld.z);
 
     const startTime = performance.now();
@@ -339,7 +351,6 @@ export class ChessScene extends Scene implements Lifecycle {
         if (t < 1) {
           requestAnimationFrame(step);
         } else {
-          // si une pièce occupait la case, on la retire (capture)
           if (occupyingId && occupyingId !== id) {
             this.removePieceById(occupyingId);
           }
@@ -379,7 +390,9 @@ export class ChessScene extends Scene implements Lifecycle {
     if (!this.shader) return;
     this.checkmateFx.active = true;
     this.checkmateFx.t0 = performance.now();
-    this.shader.uniforms.noiseAmplitude.value = 0.0;
+    this.applyShaderToTargets();
+    this.shader.uniforms.uCheckmate.value = 1.0;
+    this.shader.uniforms.uTime.value = 0.0;
   }
 
   public async load(): Promise<void> {
@@ -388,66 +401,113 @@ export class ChessScene extends Scene implements Lifecycle {
       loader.load(chessSetSrc, resolve, undefined, reject);
     });
 
-    const kingTexture = await new Promise<Texture>((resolve, reject) => {
-      new TextureLoader().load(noiseMapSrc, resolve, reject);
+    const texLoader = new TextureLoader();
+    const kingChessmateTex = await new Promise<Texture>((resolve, reject) => {
+      texLoader.load(noiseMapSrc, resolve, reject);
     });
 
     this.shader = new ShaderMaterial({
       uniforms: {
+        uNoiseMap: { value: kingChessmateTex },
         uTime: { value: 0 },
-        uGlow: { value: 0 },
+        uCheckmate: { value: 0 },
+        uScale: { value: 4.0 },
+        uSpeed: { value: 0.25 },
+        uThreshold: { value: 0.5 },
+        uEdge: { value: 0.08 },
         uGlowColor: { value: new Color(0xfff2a8) },
-        uUseMap: { value: true },
-        uMap: { value: kingTexture },
-        uBaseColor: { value: new Color(0.8, 0.8, 0.8) },
+        uGlowStrength: { value: 1.25 },
       },
       vertexShader,
       fragmentShader,
-      glslVersion: GLSL3,
+      transparent: false,
+      depthWrite: true,
     });
+
+    for (let r = 0; r < 8; r++)
+      for (let f = 0; f < 8; f++) this.boardState[r][f] = null;
+    this.pieceRegistry.clear();
 
     gltf.scene.traverse((child) => {
       if ((child as Mesh).isMesh) {
-        this.mesh = gltf.scene.children[0] as Mesh<
-          BufferGeometry,
-          MeshStandardMaterial
-        >;
-        if (child.name.includes("king")) {
-          (child as Mesh).material = this.shader;
+        this.mesh = child as Mesh<BufferGeometry, MeshStandardMaterial>;
+        if (this.mesh.name.includes("king_black")) {
+          this.shaderTargets.add(this.mesh);
         }
-        // this.mesh.material.roughness = -7;
-        // this.mesh.material.metalness = 7;
       }
       if (child.name.startsWith("piece_")) {
+        if (child.type === "Group") {
+          child.traverse((c) => {
+            if (c.type === "Mesh") {
+              this.toOutline.push(c);
+            }
+          });
+        } else {
+          this.toOutline.push(child);
+        }
+
         const mesh = child as Mesh;
         const parts = child.name.split("_");
         const type = parts[1] as PieceType;
         const color = parts[2] as PieceColor;
-        const index = parseInt(parts[3]);
-        const id = index
-          ? `${color[0]}_${type}_${index}`
+        const rawIndex = parseInt(parts[3]);
+        const id = rawIndex
+          ? `${color[0]}_${type}_${rawIndex}`
           : `${color[0]}_${type}`;
 
-        const { file, rank } = this.initialSquareFor(type, color, index);
+        const sq = this.initialSquareFor(type, color, rawIndex);
+        if (!sq) {
+          mesh.visible = false;
+          return;
+        }
+        const { file, rank } = sq;
+
+        const pos = getSquareWorldPosition(file, rank);
+        mesh.position.set(pos.x, mesh.position.y, pos.z);
+        mesh.visible = true;
+        mesh.updateMatrixWorld();
+        console.log(mesh);
+
         this.pieceRegistry.set(id, { id, type, color, file, rank, mesh });
         this.boardState[rank][file] = id;
-
-        const pos = this.getSquareWorldPosition(file, rank);
-        mesh.position.set(pos.x, mesh.position.y, pos.z);
-        mesh.updateMatrixWorld();
       }
     });
 
     this.add(gltf.scene);
   }
 
+  private applyShaderToTargets(): void {
+    for (const mesh of this.shaderTargets) {
+      if (!this.originalMaterials.has(mesh)) {
+        this.originalMaterials.set(mesh, mesh.material);
+      }
+      mesh.material = this.shader;
+    }
+  }
+
+  private restoreOriginalMaterials(): void {
+    for (const mesh of this.shaderTargets) {
+      const orig = this.originalMaterials.get(mesh);
+      if (orig) mesh.material = orig;
+    }
+    this.originalMaterials.clear();
+  }
+
   public update(): void {
     if (this.checkmateFx.active && this.shader) {
       const t = (performance.now() - this.checkmateFx.t0) / 1000;
-      this.shader.uniforms.time.value = t;
-      const amp = Math.min(1, t / 0.3) * Math.max(0, 1 - (t - 0.3) / 1.7);
-      this.shader.uniforms.noiseAmplitude.value = amp * 0.8;
-      if (t > 2.0) this.checkmateFx.active = false;
+      this.shader.uniforms.uTime.value = t;
+
+      // rampe simple 0 -> 1 -> 0 sur effectDuration
+      const p = Math.min(1, t / this.effectDuration);
+      const strength = Math.sin(p * 3.14159265); // cloche
+      this.shader.uniforms.uGlowStrength.value = strength;
+
+      if (t > this.effectDuration) {
+        this.checkmateFx.active = false;
+        this.shader.uniforms.uCheckmate.value = 0.0;
+        this.restoreOriginalMaterials();
+      }
     }
   }
 

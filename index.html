@@ -5,11 +5,28 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Three app</title>
     <link rel="stylesheet" href="assets/stylesheets/index.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Ballet:opsz@16..72&family=Cantata+One&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <canvas></canvas>
-    <section class="intro"></section>
-    <section class="game"></section>
+    <section class="intro">
+      <div class="content">
+        <h1>Chess<span>Challenge</span></h1>
+        <button class="startBtn">Start</button>
+      </div>
+    </section>
+    <section class="game">
+      <p class="win">You win!</p>
+      <p class="gameover">Game Over</p>
+      <div class="content">
+        <button class="resetBtn">Reset</button>
+      </div>
+    </section>
     <div class="loader">
       <svg width="64px" height="64px" viewBox="0 0 100 100" fill="none">
         <rect x="0" y="0" width="100" height="100" />

@@ -5,6 +5,7 @@ import { Composer } from "~/Composer";
 import { Controls } from "~/Controls";
 import { ChessScene } from "~/scenes/ChessScene";
 import { Chess } from "chess.js";
+import { fromAlgebraic } from "~/utils/utils";
 
 export interface AppParameters {
   canvas?: HTMLCanvasElement | OffscreenCanvas;
@@ -33,13 +34,9 @@ export class App implements Lifecycle {
     const x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
     const y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
     this.pointerNdc.set(x, y);
-
     this.scene.pickAt(this.pointerNdc, this.camera);
-    // if (hit) {
-    //   // this.scene.getPieceAt(hit.file, hit.rank)
-    //   // console.log(`square: ${hit.algebraic}`, hit);
-    // }
   };
+
   private onClick = (ev: PointerEvent): void => {
     const el = this.renderer.domElement as HTMLCanvasElement;
     const rect = el.getBoundingClientRect();
@@ -48,13 +45,13 @@ export class App implements Lifecycle {
     this.pointerNdc.set(x, y);
 
     const hit = this.scene.pickAt(this.pointerNdc, this.camera);
-    console.log(hit?.algebraic);
     if (!hit) return;
 
     const toAlg = hit.algebraic;
 
     if (!this.selectedSquare) {
       const piece = this.scene.getPieceAt(hit.file, hit.rank);
+      console.log(piece, toAlg);
       if (!piece) return;
 
       const turn = this.chess.turn() === "w" ? "white" : "black";
@@ -70,8 +67,7 @@ export class App implements Lifecycle {
     const move = this.chess.move({ from: fromAlg, to: toAlg, promotion: "q" });
     if (!move) return;
 
-    const { file: fromFile, rank: fromRank } =
-      this.scene.fromAlgebraic(fromAlg);
+    const { file: fromFile, rank: fromRank } = fromAlgebraic(fromAlg);
 
     const id = this.scene.boardState[fromRank][fromFile];
     if (!id) return;
@@ -131,6 +127,7 @@ export class App implements Lifecycle {
    */
   public async load(): Promise<void> {
     await Promise.all([this.composer.load(), this.scene.load()]);
+    this.composer.OutlineEffect!.selection.set(this.scene.toOutline);
 
     if (this.debug) {
       this.gui = new (await import("./GUI")).GUI(this);

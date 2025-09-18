@@ -1,33 +1,46 @@
 precision highp float;
 
-uniform float uTime;
-uniform float uGlow;
-uniform vec3  uGlowColor;
+uniform sampler2D uBaseMap;   // texture diffuse du roi (normale)
+uniform sampler2D uNoiseMap;  // noise (grayscale ou rgb)
 
-uniform bool      uUseMap;
-uniform sampler2D uMap;
-uniform vec3      uBaseColor;
+uniform float uTime;          // secondes
+uniform float uCheckmate;     // 0.0 -> off, 1.0 -> on (peut être interpolé)
+uniform float uScale;         // 2..6
+uniform float uSpeed;         // 0.1..0.6
+uniform float uThreshold;     // 0..1
+uniform float uEdge;          // 0.02..0.15
+
+uniform vec3  uGlowColor;     // ex: vec3(1.0, 0.95, 0.7)
+uniform float uGlowStrength;  // 0..2
 
 in vec2 vUv;
 in vec3 vNormalView;
 in vec3 vViewDir;
 
-out vec4 outColor;
-
-float fresnel(vec3 n, vec3 v, float power) {
-  n = normalize(n);
-  v = normalize(v);
-  return pow( 1.0 - clamp( dot(n, v), 0.0, 1.0 ), power );
+float fresnel(vec3 n, vec3 v, float p) {
+  n = normalize(n); v = normalize(v);
+  return pow(1.0 - clamp(dot(n, v), 0.0, 1.0), p);
 }
 
 void main() {
-  vec3 base = uUseMap ? texture(uMap, vUv).rgb : uBaseColor;
+  // Couleur de base (toujours visible)
+  vec3 base = texture(uBaseMap, vUv).rgb;
 
-  float rim   = fresnel(vNormalView, vViewDir, 2.0);
-  float pulse = 0.75 + 0.25 * sin(uTime * 3.5);
-  float glowK = rim * pulse * uGlow;
+  // Noise animée
+  vec2 uvN = vUv * uScale + vec2(uTime * uSpeed, 0.0);
+  float n  = texture(uNoiseMap, uvN).r; // suppose noise en niveaux de gris
 
-  vec3 glow = uGlowColor * glowK;
+  // Masque "reveal" autour d’un seuil adouci
+  float mask = smoothstep(uThreshold - uEdge, uThreshold + uEdge, n);
 
-  outColor = vec4(base + glow, 1.0);
+  // Fresnel optionnel pour un bord plus “hot”
+  float rim = fresnel(vNormalView, vViewDir, 2.0);
+
+  // Glow additif limité par le masque et modulé par fresnel
+  vec3 glow = uGlowColor * (mask * (0.5 + 0.5 * rim)) * uGlowStrength;
+
+  // Mix final : base + glow (activé par uCheckmate)
+  vec3 color = base + glow * uCheckmate;
+
+  gl_FragColor = vec4(color, 1.0);
 }

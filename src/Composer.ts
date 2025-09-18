@@ -1,72 +1,73 @@
-import type {
-  WebGLRenderer,
-  Scene,
-  Camera
-} from 'three'
+import type { WebGLRenderer, Scene, Camera } from "three";
 
 import {
   EffectComposer,
-  FXAAEffect,
+  OutlineEffect,
   EffectPass,
-  RenderPass
-} from 'postprocessing'
+  RenderPass,
+  BlendFunction,
+} from "postprocessing";
 
-import type {
-  Clock,
-  Viewport,
-  Lifecycle
-} from '~/core'
+import type { Clock, Viewport, Lifecycle } from "~/core";
 
-export interface ComposerParameters  {
-  renderer: WebGLRenderer
-  viewport: Viewport
-  clock: Clock
-  scene?: Scene
-  camera?: Camera
+export interface ComposerParameters {
+  renderer: WebGLRenderer;
+  viewport: Viewport;
+  clock: Clock;
+  scene: Scene;
+  camera: Camera;
 }
 
 export class Composer extends EffectComposer implements Lifecycle {
-  public clock: Clock
-  public viewport: Viewport
-  public renderPass: RenderPass
-  public effectPass?: EffectPass
-  public fxaaEffect?: FXAAEffect
+  public clock: Clock;
+  public viewport: Viewport;
+  public renderPass: RenderPass;
+  public effectPass?: EffectPass;
+  public OutlineEffect?: OutlineEffect;
+  private scene: Scene;
+  private cam: Camera;
 
-  public get camera(): Camera | undefined {
-    return this.renderPass.mainCamera
-  }
+  // public get camera(): Camera | undefined {
+  //   return this.renderPass.mainCamera;
+  // }
 
   public constructor({
     renderer,
     viewport,
     clock,
     scene,
-    camera
+    camera,
   }: ComposerParameters) {
-    super(renderer)
-    this.clock = clock
-    this.viewport = viewport
-    this.renderPass = new RenderPass(scene, camera)
+    super(renderer);
+    this.clock = clock;
+    this.viewport = viewport;
+    this.scene = scene;
+    this.cam = camera;
+    this.renderPass = new RenderPass(this.scene, this.cam);
+    this.addPass(this.renderPass);
   }
 
   public async load(): Promise<void> {
-    this.fxaaEffect = new FXAAEffect()
-    this.effectPass = new EffectPass(this.camera, this.fxaaEffect)
+    this.OutlineEffect = new OutlineEffect(this.scene, this.cam, {
+      blendFunction: BlendFunction.SCREEN,
+      edgeStrength: 3.0,
+      pulseSpeed: 0.0,
+      visibleEdgeColor: 0xffffff,
+      hiddenEdgeColor: 0xc55555,
+    });
+    this.effectPass = new EffectPass(this.cam, this.OutlineEffect);
 
-    this.addPass(this.renderPass)
-    this.addPass(this.effectPass)
+    this.addPass(this.effectPass);
   }
 
-  public update(): void {
-
-  }
+  public update(): void {}
 
   public resize(): void {
-    this.getRenderer().setPixelRatio(this.viewport.dpr)
-    this.setSize(this.viewport.size.x, this.viewport.size.y, false)
+    this.getRenderer().setPixelRatio(this.viewport.dpr);
+    this.setSize(this.viewport.size.x, this.viewport.size.y, false);
   }
 
   public render(): void {
-    super.render(this.clock.delta / 1000)
+    super.render(this.clock.delta / 1000);
   }
 }

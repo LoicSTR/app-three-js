@@ -6,6 +6,16 @@ html, body {
   /* overflow: hidden; */
 }
 
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.tp-rotv {
+  display: none;
+}
+
 body {
   background: #000;
   margin: 0;
@@ -22,11 +32,73 @@ canvas {
 }
 
 .intro {
+  pointer-events: none;
+  position: relative;
   height: 100vh;
-  /* color: blue; */
+  .content {
+    padding: 0rem 2rem;
+    margin-bottom: 2rem;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+  }
 }
 
 .game {
+  pointer-events: none;
+  position: relative;
   height: 100vh;
-  /* background: red; */
+  .content {
+    padding: 0rem 2rem;
+    margin-bottom: 2rem;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    justify-content: end;
+  }
+}
+
+.win, .gameover {
+  position: absolute;
+  top: 50%;
+  right: 2rem;
+  transform: translateY(-50%);
+  font-family: "Ballet", cursive;
+  font-size: 4rem;
+  color: #fff;
+  opacity: 0.7;
+  margin: 1rem;
+  text-align: center;
+  display: none;
+}
+
+h1 {
+  font-family: "Cantata One", serif;
+  font-weight: 700;
+  font-size: 6rem;
+  color: #fff;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin: 1rem;
+  span {
+    font-family: "Ballet", cursive;
+    text-transform: none;
+  }
+}
+
+button {
+  font-family: "Cantata One", serif;
+  font-weight: 400;
+  font-size: 2rem;
+  color: #fff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border: #fff solid 1px;
+  border-radius: 2rem;
+  padding: .5rem 2rem;
 }
