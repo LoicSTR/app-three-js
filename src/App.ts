@@ -4,6 +4,7 @@ import type { GUI } from "~/GUI";
 import { Composer } from "~/Composer";
 import { Controls } from "~/Controls";
 import { ChessScene } from "~/scenes/ChessScene";
+import { Chess } from "chess.js";
 
 export interface AppParameters {
   canvas?: HTMLCanvasElement | OffscreenCanvas;
@@ -23,7 +24,8 @@ export class App implements Lifecycle {
   public gui?: GUI;
   private pointerNdc: Vector2 = new Vector2();
   private pointerMoveBound = false;
-
+  private chess = new Chess();
+  private selectedSquare: string | null = null;
 
   private onPointerMove = (ev: PointerEvent): void => {
     const el = this.renderer.domElement as HTMLCanvasElement;
@@ -32,11 +34,11 @@ export class App implements Lifecycle {
     const y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
     this.pointerNdc.set(x, y);
 
-    const hit = this.scene.pickAt(this.pointerNdc, this.camera);
-    if (hit) {
-      // this.scene.getPieceAt(hit.file, hit.rank)
-      // console.log(`square: ${hit.algebraic}`, hit);
-    }
+    this.scene.pickAt(this.pointerNdc, this.camera);
+    // if (hit) {
+    //   // this.scene.getPieceAt(hit.file, hit.rank)
+    //   // console.log(`square: ${hit.algebraic}`, hit);
+    // }
   };
   private onClick = (ev: PointerEvent): void => {
     const el = this.renderer.domElement as HTMLCanvasElement;
@@ -46,20 +48,39 @@ export class App implements Lifecycle {
     this.pointerNdc.set(x, y);
 
     const hit = this.scene.pickAt(this.pointerNdc, this.camera);
-    if (hit) {
-      const pieceSelected = this.scene.getPieceAt(hit.file, hit.rank)
-      if (pieceSelected) {
-        localStorage.setItem("pieceSelected", pieceSelected.id)
-      } else {
-        const idPieceSelected = localStorage.getItem("pieceSelected")
-        if (idPieceSelected) {
-          localStorage.removeItem("pieceSelected")
-          const pieceSelected = this.scene.pieceRegistry.get(idPieceSelected)
-          if (pieceSelected) this.scene.animateMove(pieceSelected.id, hit.file, hit.rank)
-        }
-      }
+    console.log(hit?.algebraic);
+    if (!hit) return;
+
+    const toAlg = hit.algebraic;
+
+    if (!this.selectedSquare) {
+      const piece = this.scene.getPieceAt(hit.file, hit.rank);
+      if (!piece) return;
+
+      const turn = this.chess.turn() === "w" ? "white" : "black";
+      if (piece.color !== turn) return;
+
+      this.selectedSquare = toAlg;
+      return;
     }
-  }
+
+    const fromAlg = this.selectedSquare;
+    this.selectedSquare = null;
+
+    const move = this.chess.move({ from: fromAlg, to: toAlg, promotion: "q" });
+    if (!move) return;
+
+    const { file: fromFile, rank: fromRank } =
+      this.scene.fromAlgebraic(fromAlg);
+
+    const id = this.scene.boardState[fromRank][fromFile];
+    if (!id) return;
+
+    this.scene.animateMove(id, hit.file, hit.rank);
+    if (this.chess.isCheckmate()) {
+      this.scene.triggerCheckmateEffect();
+    }
+  };
 
   public constructor({ canvas, debug = false }: AppParameters = {}) {
     this.debug = debug;
@@ -154,16 +175,22 @@ export class App implements Lifecycle {
     // console.log(this.controls.isAtGameView());
 
     if (this.controls.isAtGameView() && !this.pointerMoveBound) {
-      this.renderer.domElement.addEventListener("pointermove", this.onPointerMove);
+      this.renderer.domElement.addEventListener(
+        "pointermove",
+        this.onPointerMove
+      );
       this.pointerMoveBound = true;
     } else if (!this.controls.isAtGameView() && this.pointerMoveBound) {
-      this.renderer.domElement.removeEventListener("pointermove", this.onPointerMove);
+      this.renderer.domElement.removeEventListener(
+        "pointermove",
+        this.onPointerMove
+      );
       this.pointerMoveBound = false;
     }
     if (this.controls.isAtGameView()) {
-      this.renderer.domElement.addEventListener('click', this.onClick)
+      this.renderer.domElement.addEventListener("click", this.onClick);
     } else {
-      this.renderer.domElement.removeEventListener('click', this.onClick)
+      this.renderer.domElement.removeEventListener("click", this.onClick);
     }
   }
 

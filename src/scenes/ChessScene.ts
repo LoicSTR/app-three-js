@@ -18,6 +18,9 @@ import {
   Color,
   Raycaster,
   BufferAttribute,
+  ShaderMaterial,
+  type Texture,
+  GLSL3,
 } from "three";
 
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -26,6 +29,13 @@ import type { Viewport, Clock, Lifecycle } from "~/core";
 
 import chessSetSrc from "/assets/models/chess_set_4k.gltf/chess_set_4k.gltf";
 import type { GLTF } from "three/examples/jsm/Addons.js";
+
+// import CustomShaderMaterial from "three-custom-shader-material/vanilla";
+
+import vertexShader from "~/shaders/chess.vert";
+import fragmentShader from "~/shaders/chess.frag";
+
+import noiseMapSrc from "~~/assets/textures/perlin-noise.png";
 
 export interface MainSceneParamaters {
   clock: Clock;
@@ -67,11 +77,15 @@ export class ChessScene extends Scene implements Lifecycle {
   public light3: DirectionalLight;
   public tiles!: InstancedMesh;
   public piece!: Mesh;
-  private pieceBase!: Vector3
   private raycaster: Raycaster = new Raycaster();
   private baseColors!: Float32Array;
   private highlightedIndex: number | null = null;
-  public boardState: BoardState = Array.from({ length: 8 }, () => Array(8).fill(null));;
+  public shader!: ShaderMaterial;
+  private checkmateFx = { active: false, t0: 0 };
+
+  public boardState: BoardState = Array.from({ length: 8 }, () =>
+    Array(8).fill(null)
+  );
   public pieceRegistry: PieceRegistry = new Map();
 
   public constructor({ clock, camera, viewport }: MainSceneParamaters) {
@@ -80,9 +94,10 @@ export class ChessScene extends Scene implements Lifecycle {
     this.clock = clock;
     this.camera = camera;
     this.viewport = viewport;
-    this.background = new TextureLoader().load(
-      "/assets/textures/chess_board_nor_4k.jpg"
-    );
+
+    // this.background = new TextureLoader().load(
+    //   "/assets/textures/chess_board_nor_4k.jpg"
+    // );
 
     // const axesHelper = new AxesHelper(10);
     // this.add(axesHelper);
@@ -104,7 +119,6 @@ export class ChessScene extends Scene implements Lifecycle {
     this.add(this.light2);
     this.add(this.light3);
     this.addInteractiveTiles();
-
   }
 
   private addInteractiveTiles() {
@@ -175,12 +189,14 @@ export class ChessScene extends Scene implements Lifecycle {
   }
 
   public toAlgebraic(file: number, rank: number): string {
-    const fileChar = String.fromCharCode("a".charCodeAt(0) + file);
+    const flippedFile = FILES - 1 - file;
+    const fileChar = String.fromCharCode("a".charCodeAt(0) + flippedFile);
     return `${fileChar}${rank + 1}`;
   }
 
   public fromAlgebraic(square: string): { file: number; rank: number } {
-    const file = square.charCodeAt(0) - "a".charCodeAt(0);
+    const flipped = square.charCodeAt(0) - "a".charCodeAt(0);
+    const file = FILES - 1 - flipped;
     const rank = parseInt(square[1]) - 1;
     return { file, rank };
   }
@@ -288,19 +304,25 @@ export class ChessScene extends Scene implements Lifecycle {
   public getPieceAt(file: number, rank: number): PieceRecord | null {
     const id = this.boardState[rank][file];
     return id ? this.pieceRegistry.get(id)! : null;
-
   }
 
-  public async animateMove(id: string, toFile: number, toRank: number, duration = 0.4): Promise<void> {
+  public async animateMove(
+    id: string,
+    toFile: number,
+    toRank: number,
+    duration = 0.4
+  ): Promise<void> {
     const piece = this.pieceRegistry.get(id);
     if (!piece) return;
+
+    const occupyingId = this.boardState[toRank][toFile];
 
     const start = piece.mesh.position.clone();
     const endWorld = this.getSquareWorldPosition(toFile, toRank);
     const end = new Vector3(endWorld.x, start.y, endWorld.z);
 
     const startTime = performance.now();
-    const ease = (t: number) => t * t * (3 - 2 * t); // smoothstep
+    const ease = (t: number) => t * t * (3 - 2 * t);
 
     return new Promise<void>((resolve) => {
       const step = (now: number) => {
@@ -317,6 +339,10 @@ export class ChessScene extends Scene implements Lifecycle {
         if (t < 1) {
           requestAnimationFrame(step);
         } else {
+          // si une pièce occupait la case, on la retire (capture)
+          if (occupyingId && occupyingId !== id) {
+            this.removePieceById(occupyingId);
+          }
           this.moveRecord(id, toFile, toRank);
           resolve();
         }
@@ -333,10 +359,51 @@ export class ChessScene extends Scene implements Lifecycle {
     this.boardState[toRank][toFile] = id;
   }
 
+  public removePieceById(id: string): void {
+    const rec = this.pieceRegistry.get(id);
+    if (!rec) return;
+    if (this.boardState[rec.rank][rec.file] === id) {
+      this.boardState[rec.rank][rec.file] = null;
+    }
+    this.pieceRegistry.delete(id);
+    if (rec.mesh.parent) rec.mesh.parent.remove(rec.mesh);
+  }
+
+  public captureAt(file: number, rank: number): void {
+    const id = this.boardState[rank][file];
+    if (!id) return;
+    this.removePieceById(id);
+  }
+
+  public triggerCheckmateEffect(): void {
+    if (!this.shader) return;
+    this.checkmateFx.active = true;
+    this.checkmateFx.t0 = performance.now();
+    this.shader.uniforms.noiseAmplitude.value = 0.0;
+  }
+
   public async load(): Promise<void> {
     const gltf = await new Promise<GLTF>((resolve, reject) => {
       const loader = new GLTFLoader();
       loader.load(chessSetSrc, resolve, undefined, reject);
+    });
+
+    const kingTexture = await new Promise<Texture>((resolve, reject) => {
+      new TextureLoader().load(noiseMapSrc, resolve, reject);
+    });
+
+    this.shader = new ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uGlow: { value: 0 },
+        uGlowColor: { value: new Color(0xfff2a8) },
+        uUseMap: { value: true },
+        uMap: { value: kingTexture },
+        uBaseColor: { value: new Color(0.8, 0.8, 0.8) },
+      },
+      vertexShader,
+      fragmentShader,
+      glslVersion: GLSL3,
     });
 
     gltf.scene.traverse((child) => {
@@ -345,17 +412,21 @@ export class ChessScene extends Scene implements Lifecycle {
           BufferGeometry,
           MeshStandardMaterial
         >;
-        this.mesh.material.roughness = -7;
-        this.mesh.material.metalness = 7;
+        if (child.name.includes("king")) {
+          (child as Mesh).material = this.shader;
+        }
+        // this.mesh.material.roughness = -7;
+        // this.mesh.material.metalness = 7;
       }
-      if ((child as Mesh).isMesh && child.name.startsWith("piece_")) {
+      if (child.name.startsWith("piece_")) {
         const mesh = child as Mesh;
         const parts = child.name.split("_");
         const type = parts[1] as PieceType;
         const color = parts[2] as PieceColor;
         const index = parseInt(parts[3]);
-
-        const id = index ? `${color[0]}_${type}_${index}` : `${color[0]}_${type}`;
+        const id = index
+          ? `${color[0]}_${type}_${index}`
+          : `${color[0]}_${type}`;
 
         const { file, rank } = this.initialSquareFor(type, color, index);
         this.pieceRegistry.set(id, { id, type, color, file, rank, mesh });
@@ -371,6 +442,13 @@ export class ChessScene extends Scene implements Lifecycle {
   }
 
   public update(): void {
+    if (this.checkmateFx.active && this.shader) {
+      const t = (performance.now() - this.checkmateFx.t0) / 1000;
+      this.shader.uniforms.time.value = t;
+      const amp = Math.min(1, t / 0.3) * Math.max(0, 1 - (t - 0.3) / 1.7);
+      this.shader.uniforms.noiseAmplitude.value = amp * 0.8;
+      if (t > 2.0) this.checkmateFx.active = false;
+    }
   }
 
   public resize(): void {
@@ -378,5 +456,5 @@ export class ChessScene extends Scene implements Lifecycle {
     this.camera.updateProjectionMatrix();
   }
 
-  public dispose(): void { }
+  public dispose(): void {}
 }
