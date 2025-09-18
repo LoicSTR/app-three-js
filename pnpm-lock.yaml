@@ -17,6 +17,9 @@ importers:
       camera-controls:
         specifier: ^3.1.0
         version: 3.1.0(three@0.173.0)
+      chess.js:
+        specifier: ^1.4.0
+        version: 1.4.0
       postprocessing:
         specifier: ^6.37.8
         version: 6.37.8(three@0.173.0)
@@ -370,6 +373,9 @@ packages:
     engines: {node: '>=20.11.0', npm: '>=10.8.2'}
     peerDependencies:
       three: '>=0.126.1'
+
+  chess.js@1.4.0:
+    resolution: {integrity: sha512-BBJgrrtKQOzFLonR0l+k64A98NLemPwNsCskwb+29bRwobUa4iTm51E1kwGPbWXAcfdDa18nad6vpPPKPWarqw==}
 
   chokidar@3.6.0:
     resolution: {integrity: sha512-7VT13fmjotKpGipCW9JEQAusEPE+Ei8nl6/g4FBAmIm0GOOLMua9NDDo/DWp0ZAxCr3cPq5ZpBqmPAQgDda2Pw==}
@@ -800,6 +806,8 @@ snapshots:
   camera-controls@3.1.0(three@0.173.0):
     dependencies:
       three: 0.173.0
+
+  chess.js@1.4.0: {}
 
   chokidar@3.6.0:
     dependencies:

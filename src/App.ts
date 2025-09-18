@@ -51,7 +51,6 @@ export class App implements Lifecycle {
 
     if (!this.selectedSquare) {
       const piece = this.scene.getPieceAt(hit.file, hit.rank);
-      console.log(piece, toAlg);
       if (!piece) return;
 
       const turn = this.chess.turn() === "w" ? "white" : "black";
