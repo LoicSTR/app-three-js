@@ -389,6 +389,8 @@ export class ChessScene extends Scene implements Lifecycle {
     const endText = document.querySelector(".endText") as HTMLElement;
     endText.innerText = "You win!";
     endText.style.opacity = "1.0";
+    const rulesText = document.querySelector(".rulesText") as HTMLElement;
+    rulesText.style.opacity = "0";
     this.light1.intensity = 0;
     this.light2.intensity = 0.75;
     this.light3.intensity = 0.75;

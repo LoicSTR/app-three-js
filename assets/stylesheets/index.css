@@ -17,7 +17,6 @@ html, body {
 }
 
 body {
-  background-image: url(../images/chess-backround.jpg);
   margin: 0;
   position: relative;
 }
@@ -65,6 +64,20 @@ canvas {
   margin: 1rem;
   text-align: center;
   opacity: 0;
+  transition: opacity 0.5s;
+}
+.rulesText {
+  position: absolute;
+  top: 50%;
+  left: 2rem;
+  transform: translateY(-50%);
+  font-family: "Ballet", cursive;
+  font-size: 4rem;
+  color: #fff;
+  opacity: 0.7;
+  margin: 1rem;
+  text-align: center;
+  opacity: 1;
   transition: opacity 0.5s;
 }
 
