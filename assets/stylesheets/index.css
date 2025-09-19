@@ -38,11 +38,7 @@ canvas {
     position: relative;
     padding: 2rem 2rem;
     height: 100%;
-    /* margin-bottom: 2rem; */
     width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: end;
   }
 }
 
@@ -51,10 +47,9 @@ canvas {
   position: relative;
   height: 100vh;
   .content {
+    height: 100%;
     padding: 2rem;
     width: 100%;
-    display: flex;
-    justify-content: end;
   }
 }
 
@@ -84,13 +79,13 @@ h1 {
   span {
     font-family: "Ballet", cursive;
     text-transform: none;
-    display: block;
   }
 }
 
 button {
   position: absolute;
   bottom: 0;
+  right: 0;
   font-family: "Ballet", cursive;
   font-weight: 400;
   font-size: 2rem;
