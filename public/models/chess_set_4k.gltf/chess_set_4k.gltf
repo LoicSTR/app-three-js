@@ -837,47 +837,47 @@
     {
       "mimeType": "image/jpeg",
       "name": "chess_set_pieces_white_nor_gl",
-      "uri": "textures/chess_set_pieces_white_nor_gl_1k.jpg"
+      "uri": "textures/chess_set_pieces_white_nor_gl_4k.jpg"
     },
     {
       "mimeType": "image/jpeg",
       "name": "chess_set_pieces_white_diff",
-      "uri": "textures/chess_set_pieces_white_diff_1k.jpg"
+      "uri": "textures/chess_set_pieces_white_diff_4k.jpg"
     },
     {
       "mimeType": "image/jpeg",
       "name": "chess_set_pieces_white_rough",
-      "uri": "textures/chess_set_pieces_white_arm_1k.jpg"
+      "uri": "textures/chess_set_pieces_white_arm_4k.jpg"
     },
     {
       "mimeType": "image/jpeg",
       "name": "chess_set_board_nor_gl",
-      "uri": "textures/chess_set_board_nor_gl_1k.jpg"
+      "uri": "textures/chess_set_board_nor_gl_4k.jpg"
     },
     {
       "mimeType": "image/jpeg",
       "name": "chess_set_board_diff",
-      "uri": "textures/chess_set_board_diff_1k.jpg"
+      "uri": "textures/chess_set_board_diff_4k.jpg"
     },
     {
       "mimeType": "image/jpeg",
       "name": "chess_set_board_rough",
-      "uri": "textures/chess_set_board_arm_1k.jpg"
+      "uri": "textures/chess_set_board_arm_4k.jpg"
     },
     {
       "mimeType": "image/jpeg",
       "name": "chess_set_pieces_black_nor_gl",
-      "uri": "textures/chess_set_pieces_black_nor_gl_1k.jpg"
+      "uri": "textures/chess_set_pieces_black_nor_gl_4k.jpg"
     },
     {
       "mimeType": "image/jpeg",
       "name": "chess_set_pieces_black_diff",
-      "uri": "textures/chess_set_pieces_black_diff_1k.jpg"
+      "uri": "textures/chess_set_pieces_black_diff_4k.jpg"
     },
     {
       "mimeType": "image/jpeg",
       "name": "chess_set_pieces_black_rough",
-      "uri": "textures/chess_set_pieces_black_arm_1k.jpg"
+      "uri": "textures/chess_set_pieces_black_arm_4k.jpg"
     }
   ],
   "accessors": [
