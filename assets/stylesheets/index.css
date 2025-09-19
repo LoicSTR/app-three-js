@@ -67,16 +67,11 @@ canvas {
   transition: opacity 0.5s;
 }
 .ruleText {
-  position: absolute;
-  top: 50%;
-  left: 2rem;
-  transform: translateY(-50%);
   font-family: "Ballet", cursive;
-  font-size: 4rem;
+  font-size: 3rem;
   color: #fff;
   opacity: 0.7;
   margin: 1rem;
-  text-align: center;
   opacity: 1;
   transition: opacity 0.5s;
 }
