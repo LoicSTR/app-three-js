@@ -35,7 +35,7 @@ canvas {
   height: 100vh;
   .content {
     position: relative;
-    padding: 2rem 2rem;
+    padding: 2rem;
     height: 100%;
     width: 100%;
   }
@@ -43,11 +43,11 @@ canvas {
 
 .game {
   pointer-events: none;
-  position: relative;
   height: 100vh;
   .content {
-    height: 100%;
+    position: relative;
     padding: 2rem;
+    height: 100%;
     width: 100%;
   }
 }
