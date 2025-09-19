@@ -127,9 +127,7 @@ export class ChessScene extends Scene implements Lifecycle {
     this.camera = camera;
     this.viewport = viewport;
 
-    this.background = new TextureLoader().load(
-      "/assets/textures/chess_board_nor_4k.jpg"
-    );
+    this.background = new Color(0x000000);
 
     this.light1 = new DirectionalLight(0xffffff, 0.75);
     this.light1.position.set(1, 0.5, 0);
