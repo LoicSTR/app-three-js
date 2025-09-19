@@ -74,6 +74,7 @@ export class App implements Lifecycle {
     if (!id) return;
 
     this.scene.animateMove(id, hit.file, hit.rank);
+
     if (this.chess.isCheckmate()) {
       this.scene.triggerCheckmateEffect();
     } else {
@@ -176,7 +177,6 @@ export class App implements Lifecycle {
     this.viewport.update();
     this.scene.update();
     this.composer.update();
-    // console.log(this.controls.isAtGameView());
 
     if (this.controls.isAtGameView() && !this.pointerMoveBound) {
       this.renderer.domElement.addEventListener(

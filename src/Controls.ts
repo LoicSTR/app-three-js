@@ -46,6 +46,7 @@ export class Controls extends CameraControls implements Lifecycle {
   public currentPos: Vector3 = this.startPos.clone();
   private cameraTarget: Vector3 = new Vector3(0, 0, 0);
   private lerpSpeed = 5;
+
   public isAtGameView(threshold = 5e-3): boolean {
     return this.currentPos.distanceTo(this.gamePos) < threshold;
   }

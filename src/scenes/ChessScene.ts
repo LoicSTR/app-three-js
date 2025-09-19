@@ -451,7 +451,7 @@ export class ChessScene extends Scene implements Lifecycle {
           ? `${color[0]}_${type}_${rawIndex}`
           : `${color[0]}_${type}`;
 
-        const sq = this.initialSquareFor(type, color, rawIndex, true);
+        const sq = this.initialSquareFor(type, color, rawIndex, false);
         if (!sq) {
           mesh.visible = false;
           return;
