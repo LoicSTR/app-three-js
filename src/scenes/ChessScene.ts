@@ -373,12 +373,6 @@ export class ChessScene extends Scene implements Lifecycle {
     if (rec.mesh.parent) rec.mesh.parent.remove(rec.mesh);
   }
 
-  public captureAt(file: number, rank: number): void {
-    const id = this.boardState[rank][file];
-    if (!id) return;
-    this.removePieceById(id);
-  }
-
   public triggerCheckmateEffect(): void {
     if (!this.shader) return;
     this.checkmateFx.active = true;

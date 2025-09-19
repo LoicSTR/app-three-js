@@ -44,9 +44,6 @@ export class GUI extends Pane implements Lifecycle {
     });
 
     this.applyStyle();
-
-    // this.addBinding(app.scene.mesh!.material, "roughness");
-    // this.addBinding(app.scene.mesh!.material, "metalness");
   }
 
   public start(): void {
