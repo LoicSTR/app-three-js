@@ -17,7 +17,7 @@ html, body {
 }
 
 body {
-  background: #000;
+  background-image: url(../images/chess-backround.jpg);
   margin: 0;
   position: relative;
 }
@@ -84,9 +84,9 @@ h1 {
 
 button {
   position: absolute;
-  bottom: 0;
-  right: 0;
-  font-family: "Ballet", cursive;
+  bottom: 2rem;
+  right: 2rem;
+  font-family: "Cantata One", serif;
   font-weight: 400;
   font-size: 2rem;
   color: #fff;
