@@ -136,7 +136,6 @@ export class ChessScene extends Scene implements Lifecycle {
 
     this.light2 = new SpotLight(0x89cff0, 0.5);
     this.light2.position.set(0, 0.5, -1);
-    // this.light2.lookAt(new Vector3(0, 0, 0));
 
     this.light3 = new SpotLight(0xee4b2b, 0.5);
     this.light3.position.set(0, 0.5, 1);
