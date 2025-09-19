@@ -29,14 +29,14 @@ import type { Viewport, Clock, Lifecycle } from "~/core";
 
 const chessSetSrc = `${
   import.meta.env.BASE_URL
-}models/chess_set_1k.gltf/chess_set_1k.gltf`;
+}/models/chess_set_1k.gltf/chess_set_1k.gltf`;
 
 import type { GLTF } from "three/examples/jsm/Addons.js";
 
 import vertexShader from "~/shaders/chess.vert";
 import fragmentShader from "~/shaders/chess.frag";
 
-const noiseMapSrc = `${import.meta.env.BASE_URL}textures/perlin-noise.png`;
+const noiseMapSrc = `${import.meta.env.BASE_URL}/textures/perlin-noise.png`;
 
 import {
   FILES,
