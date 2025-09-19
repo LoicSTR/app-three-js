@@ -37,9 +37,8 @@ canvas {
   .content {
     position: relative;
     padding: 2rem 2rem;
+    height: 100%;
     /* margin-bottom: 2rem; */
-    position: absolute;
-    bottom: 0;
     width: 100%;
     display: flex;
     justify-content: space-between;
