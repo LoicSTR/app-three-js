@@ -119,6 +119,8 @@ export class ChessScene extends Scene implements Lifecycle {
     Array(8).fill(null)
   );
   public pieceRegistry: PieceRegistry = new Map();
+  public lightOrbitSpeed = 0.001;
+  public lightOrbitRadius = 0.5;
 
   public constructor({ clock, camera, viewport }: MainSceneParamaters) {
     super();
@@ -496,10 +498,25 @@ export class ChessScene extends Scene implements Lifecycle {
       const strength = Math.sin(p * 3.14159265);
       this.shader.uniforms.uGlowStrength.value = strength;
 
+      const angle = t * this.lightOrbitSpeed;
+      const r = this.lightOrbitRadius;
+      this.light2.position.x = Math.cos(angle) * r;
+      this.light2.position.z = Math.sin(angle) * r * -1;
+      this.light2.position.y = 0.5 + 0.25 * Math.sin(angle * 0.5);
+      this.light2.lookAt(new Vector3(0, 0, 0));
+
+      this.light3.position.x = Math.cos(angle + Math.PI) * r;
+      this.light3.position.z = Math.sin(angle + Math.PI) * r * -1;
+      this.light3.position.y = 0.5 + 0.25 * Math.cos(angle * 0.5);
+      this.light3.lookAt(new Vector3(0, 0, 0));
+
       if (t > this.effectDuration) {
         this.checkmateFx.active = false;
         this.shader.uniforms.uCheckmate.value = 0.0;
         this.restoreOriginalMaterials();
+        this.light1.intensity = 1;
+        this.light2.intensity = 0.75;
+        this.light3.intensity = 0.75;
       }
     }
   }
