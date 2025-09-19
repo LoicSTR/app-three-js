@@ -1,6 +1,7 @@
 import {
   Scene,
   DirectionalLight,
+  SpotLight,
   PerspectiveCamera,
   Vector3,
   Vector2,
@@ -102,8 +103,8 @@ export class ChessScene extends Scene implements Lifecycle {
   public viewport: Viewport;
   public mesh?: Mesh<BufferGeometry, MeshStandardMaterial>;
   public light1: DirectionalLight;
-  public light2: DirectionalLight;
-  public light3: DirectionalLight;
+  public light2: SpotLight;
+  public light3: SpotLight;
   public tiles!: InstancedMesh;
   public piece!: Mesh;
   private raycaster: Raycaster = new Raycaster();
@@ -133,13 +134,12 @@ export class ChessScene extends Scene implements Lifecycle {
     this.light1.position.set(1, 0.5, 0);
     this.light1.lookAt(new Vector3(0, 0, 0));
 
-    this.light2 = new DirectionalLight(0x89cff0, 0.5);
+    this.light2 = new SpotLight(0x89cff0, 0.5);
     this.light2.position.set(0, 0.5, -1);
-    this.light2.lookAt(new Vector3(0, 0, 0));
+    // this.light2.lookAt(new Vector3(0, 0, 0));
 
-    this.light3 = new DirectionalLight(0xee4b2b, 0.5);
+    this.light3 = new SpotLight(0xee4b2b, 0.5);
     this.light3.position.set(0, 0.5, 1);
-    this.light3.lookAt(new Vector3(0, 0, 0));
 
     this.add(this.light1);
     this.add(this.light2);
