@@ -80,8 +80,8 @@ export class App implements Lifecycle {
       const endText = document.querySelector(".endText") as HTMLElement;
       endText.innerText = "Game Over";
       endText.style.opacity = "1.0";
-      const rulesText = document.querySelector(".rulesText") as HTMLElement;
-      rulesText.style.opacity = "0";
+      const ruleText = document.querySelector(".ruleText") as HTMLElement;
+      ruleText.style.opacity = "0";
     }
   };
 
