@@ -3,9 +3,9 @@ import { Clock, Loop, Viewport, type Lifecycle } from "~/core";
 import type { GUI } from "~/GUI";
 import { Composer } from "~/Composer";
 import { Controls } from "~/Controls";
-import { ChessScene } from "~/scenes/ChessScene";
+import { ChessScene } from "~/scenes/newChessScene";
 import { Chess } from "chess.js";
-import { fromAlgebraic } from "~/utils/utils";
+import { toAlgebraic, fileOf, rankOf } from "~/utils/utils";
 
 export interface AppParameters {
   canvas?: HTMLCanvasElement | OffscreenCanvas;
@@ -25,9 +25,7 @@ export class App implements Lifecycle {
   public gui?: GUI;
   private pointerNdc: Vector2 = new Vector2();
   private pointerMoveBound = false;
-  private chess = new Chess(
-    "3r1k1r/4R1Rp/p2P4/1p1n2P1/3N4/8/PPP5/2K5 w - - 0 1"
-  );
+  private chess = new Chess();
   private selectedSquare: string | null = null;
 
   private onPointerMove = (ev: PointerEvent): void => {
@@ -36,61 +34,74 @@ export class App implements Lifecycle {
     const x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
     const y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
     this.pointerNdc.set(x, y);
-    this.scene.pickAt(this.pointerNdc, this.camera);
-  };
-
-  private onClick = (ev: PointerEvent): void => {
-    const el = this.renderer.domElement as HTMLCanvasElement;
-    const rect = el.getBoundingClientRect();
-    const x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
-    const y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
-    this.pointerNdc.set(x, y);
-
-    const hit = this.scene.pickAt(this.pointerNdc, this.camera);
-    if (!hit) return;
-
-    const toAlg = hit.algebraic;
-
-    if (!this.selectedSquare) {
-      const piece = this.scene.getPieceAt(hit.file, hit.rank);
-      if (!piece) return;
-
-      const turn = this.chess.turn() === "w" ? "white" : "black";
-      if (piece.color !== turn) return;
-
-      this.selectedSquare = toAlg;
-      return;
-    }
-
-    const fromAlg = this.selectedSquare;
-    this.selectedSquare = null;
-
-    const move = this.chess.move({ from: fromAlg, to: toAlg, promotion: "q" });
-    if (!move) return;
-
-    const { file: fromFile, rank: fromRank } = fromAlgebraic(fromAlg);
-
-    const id = this.scene.boardState[fromRank][fromFile];
-    if (!id) return;
-
-    this.scene.animateMove(id, hit.file, hit.rank);
-
-    if (this.chess.isCheckmate()) {
-      this.scene.triggerCheckmateEffect();
-    } else {
-      const endText = document.querySelector(".endText") as HTMLElement;
-      endText.innerText = "Game Over";
-      endText.style.opacity = "1.0";
-      const ruleText = document.querySelector(".ruleText") as HTMLElement;
-      ruleText.style.opacity = "0";
+    this.scene.board.pickAt(this.pointerNdc, this.camera);
+    const cell = this.scene.board.highlightedIndex;
+    if (cell !== null) {
+      const file = fileOf(cell);
+      const rank = rankOf(cell);
+      const cellText = document.querySelector(".cell") as HTMLElement;
+      const cellToAlg = toAlgebraic(file, rank);
+      cellText.innerText = `${cellToAlg}`;
+      const pieceText = document.querySelector(".piece") as HTMLElement;
+      const piece = this.scene.board.boardState[rank][file];
+      console.log(piece);
+      if (piece) {
+        pieceText.innerText = `${piece.name}`;
+      }
     }
   };
+
+  // private onClick = (ev: PointerEvent): void => {
+  //   const el = this.renderer.domElement as HTMLCanvasElement;
+  //   const rect = el.getBoundingClientRect();
+  //   const x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+  //   const y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
+  //   this.pointerNdc.set(x, y);
+
+  //   const hit = this.scene.pickAt(this.pointerNdc, this.camera);
+  //   if (!hit) return;
+
+  //   const toAlg = hit.algebraic;
+
+  //   if (!this.selectedSquare) {
+  //     const piece = this.scene.getPieceAt(hit.file, hit.rank);
+  //     if (!piece) return;
+
+  //     const turn = this.chess.turn() === "w" ? "white" : "black";
+  //     if (piece.color !== turn) return;
+
+  //     this.selectedSquare = toAlg;
+  //     return;
+  //   }
+
+  //   const fromAlg = this.selectedSquare;
+  //   this.selectedSquare = null;
+
+  //   const move = this.chess.move({ from: fromAlg, to: toAlg, promotion: "q" });
+  //   if (!move) return;
+
+  //   const { file: fromFile, rank: fromRank } = fromAlgebraic(fromAlg);
+
+  //   const id = this.scene.boardState[fromRank][fromFile];
+  //   if (!id) return;
+
+  //   this.scene.animateMove(id, hit.file, hit.rank);
+
+  //   if (this.chess.isCheckmate()) {
+  //     this.scene.triggerCheckmateEffect();
+  //   } else {
+  //     const endText = document.querySelector(".endText") as HTMLElement;
+  //     endText.innerText = "Game Over";
+  //     endText.style.opacity = "1.0";
+  //     const ruleText = document.querySelector(".ruleText") as HTMLElement;
+  //     ruleText.style.opacity = "0";
+  //   }
+  // };
 
   public constructor({ canvas, debug = false }: AppParameters = {}) {
     this.debug = debug;
     this.clock = new Clock();
     this.camera = new PerspectiveCamera(30, 1, 0.1, 50);
-
     this.renderer = new WebGLRenderer({
       canvas,
       powerPreference: "high-performance",
@@ -110,6 +121,7 @@ export class App implements Lifecycle {
       camera: this.camera,
       clock: this.clock,
     });
+    console.log(this.scene.board.boardState);
 
     this.composer = new Composer({
       renderer: this.renderer,
@@ -135,8 +147,7 @@ export class App implements Lifecycle {
    */
   public async load(): Promise<void> {
     await Promise.all([this.composer.load(), this.scene.load()]);
-    this.composer.OutlineEffect!.selection.set(this.scene.toOutline);
-
+    // this.composer.OutlineEffect!.selection.set(this.scene.toOutline);
     if (this.debug) {
       this.gui = new (await import("./GUI")).GUI(this);
     }
@@ -160,12 +171,12 @@ export class App implements Lifecycle {
     this.controls.stop();
     this.viewport.stop();
     this.loop.stop();
-    if (this.controls.currentPos === this.controls.gamePos) {
-      this.renderer.domElement.removeEventListener(
-        "pointermove",
-        this.onPointerMove
-      );
-    }
+    // if (this.controls.currentPos === this.controls.gamePos) {
+    //   this.renderer.domElement.removeEventListener(
+    //     "pointermove",
+    //     this.onPointerMove
+    //   );
+    // }
   }
 
   /**
@@ -191,11 +202,11 @@ export class App implements Lifecycle {
       );
       this.pointerMoveBound = false;
     }
-    if (this.controls.isAtGameView()) {
-      this.renderer.domElement.addEventListener("click", this.onClick);
-    } else {
-      this.renderer.domElement.removeEventListener("click", this.onClick);
-    }
+    // if (this.controls.isAtGameView()) {
+    //   this.renderer.domElement.addEventListener("click", this.onClick);
+    // } else {
+    //   this.renderer.domElement.removeEventListener("click", this.onClick);
+    // }
   }
 
   /**

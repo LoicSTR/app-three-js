@@ -29,14 +29,14 @@ import type { Viewport, Clock, Lifecycle } from "~/core";
 
 const chessSetSrc = `${
   import.meta.env.BASE_URL
-}/models/chess_set_1k.gltf/chess_set_1k.gltf`;
+}models/chess_set_1k.gltf/chess_set_1k.gltf`;
 
 import type { GLTF } from "three/examples/jsm/Addons.js";
 
 import vertexShader from "~/shaders/chess.vert";
 import fragmentShader from "~/shaders/chess.frag";
 
-const noiseMapSrc = `${import.meta.env.BASE_URL}/textures/perlin-noise.png`;
+const noiseMapSrc = `${import.meta.env.BASE_URL}textures/perlin-noise.png`;
 
 import {
   FILES,
@@ -109,9 +109,6 @@ export class ChessScene extends Scene implements Lifecycle {
   public light3: SpotLight;
   public tiles!: InstancedMesh;
   public piece!: Mesh;
-  private raycaster: Raycaster = new Raycaster();
-  private baseColors!: Float32Array;
-  private highlightedIndex: number | null = null;
   public shader!: ShaderMaterial;
   private checkmateFx = { active: false, t0: 0 };
   private shaderTargets: Set<Mesh> = new Set();
@@ -145,166 +142,6 @@ export class ChessScene extends Scene implements Lifecycle {
     this.add(this.light1);
     this.add(this.light2);
     this.add(this.light3);
-    this.addInteractiveTiles();
-  }
-
-  private addInteractiveTiles() {
-    const geom = new PlaneGeometry(CELL, CELL);
-    geom.rotateX(-Math.PI / 2);
-    const vertexCount = (geom.getAttribute("position") as any).count;
-    const white = new Float32Array(vertexCount * 3);
-    white.fill(1);
-    geom.setAttribute("color", new BufferAttribute(white, 3));
-    const mat = new MeshBasicMaterial({
-      transparent: true,
-      opacity: 0.05,
-      depthWrite: false,
-      depthTest: true,
-      vertexColors: true,
-    });
-    mat.color.set(0xffffff);
-    mat.toneMapped = false;
-
-    this.tiles = new InstancedMesh(geom, mat, FILES * RANKS);
-    this.tiles.renderOrder = 2;
-    this.tiles.position.y = 0.0005;
-    this.tiles.instanceMatrix.setUsage(DynamicDrawUsage);
-    this.baseColors = new Float32Array(FILES * RANKS * 3);
-    const instanceColors = new Float32Array(FILES * RANKS * 3);
-    this.tiles.instanceColor = new InstancedBufferAttribute(instanceColors, 3);
-
-    const m = new Matrix4();
-    let idx = 0;
-    for (let r = 0; r < RANKS; r++) {
-      for (let f = 0; f < FILES; f++) {
-        const c = squareToWorld(f, r, ORIGIN.y + 0.0005);
-        m.makeTranslation(c.x, c.y, c.z);
-        this.tiles.setMatrixAt(idx, m);
-
-        const isDark = (f + r) % 2 === 1;
-        const base = isDark ? new Color(0x000000) : new Color(0xffffff);
-        this.tiles.setColorAt(idx, base);
-
-        const i3 = idx * 3;
-        instanceColors[i3 + 0] = base.r;
-        instanceColors[i3 + 1] = base.g;
-        instanceColors[i3 + 2] = base.b;
-        this.baseColors[i3 + 0] = base.r;
-        this.baseColors[i3 + 1] = base.g;
-        this.baseColors[i3 + 2] = base.b;
-        idx++;
-      }
-    }
-
-    this.tiles.instanceMatrix.needsUpdate = true;
-    this.tiles.instanceColor!.needsUpdate = true;
-
-    this.add(this.tiles);
-  }
-
-  private highlightIndex(index: number | null): void {
-    if (!this.tiles.instanceColor) return;
-    if (index === this.highlightedIndex) return;
-
-    if (this.highlightedIndex !== null) {
-      const prev = this.highlightedIndex;
-      const i3 = prev * 3;
-      this.tiles.instanceColor.array[i3 + 0] = this.baseColors[i3 + 0];
-      this.tiles.instanceColor.array[i3 + 1] = this.baseColors[i3 + 1];
-      this.tiles.instanceColor.array[i3 + 2] = this.baseColors[i3 + 2];
-    }
-
-    this.highlightedIndex = index;
-
-    if (index !== null) {
-      const i3 = index * 3;
-      this.tiles.instanceColor.array[i3 + 0] = 1.0;
-      this.tiles.instanceColor.array[i3 + 1] = 0.85;
-      this.tiles.instanceColor.array[i3 + 2] = 0.0;
-      this.tiles.instanceColor!.needsUpdate = true;
-    }
-
-    this.tiles.instanceColor.needsUpdate = true;
-  }
-
-  public pickAt(
-    pointerNdc: Vector2,
-    camera: PerspectiveCamera
-  ): {
-    file: number;
-    rank: number;
-    index: number;
-    algebraic: string;
-    world: Vector3;
-  } | null {
-    if (!this.tiles) return null;
-
-    this.raycaster.setFromCamera(pointerNdc, camera);
-    const intersects = this.raycaster.intersectObject(this.tiles, false);
-    if (!intersects.length) {
-      this.highlightIndex(null);
-      return null;
-    }
-
-    const hit = intersects[0];
-    const index = (hit.instanceId ?? -1) as number;
-    if (index < 0) {
-      this.highlightIndex(null);
-      return null;
-    }
-
-    const file = fileOf(index);
-    const rank = rankOf(index);
-    const world = squareToWorld(file, rank, ORIGIN.y + 0.0005);
-    const algebraic = toAlgebraic(file, rank);
-
-    this.highlightIndex(index);
-
-    return { file, rank, index, algebraic, world };
-  }
-
-  public initialSquareFor(
-    type: PieceType,
-    color: PieceColor,
-    index?: number,
-    isCustom: boolean = false
-  ): { file: number; rank: number } | null {
-    const back = color === "white" ? 0 : 7;
-    const pawn = color === "white" ? 1 : 6;
-    const idx = Number.isFinite(index as number) ? (index as number) : 0;
-
-    if (isCustom) {
-      const custom = position.find(
-        (p) => p.type === type && p.color === color && p.index === idx
-      );
-      if (custom) return { file: custom.file, rank: custom.rank };
-    } else {
-      switch (type) {
-        case "pawn": {
-          const file = Math.max(0, Math.min(7, idx - 1));
-          return { file, rank: pawn };
-        }
-        case "king":
-          return { file: 3, rank: back };
-        case "queen":
-          return { file: 4, rank: back };
-        case "rook": {
-          const side = idx % 2;
-          return { file: side === 0 ? 0 : 7, rank: back };
-        }
-        case "knight": {
-          const side = idx % 2;
-          return { file: side === 0 ? 1 : 6, rank: back };
-        }
-        case "bishop": {
-          const side = idx % 2;
-          return { file: side === 0 ? 2 : 5, rank: back };
-        }
-        default:
-          return { file: 0, rank: back };
-      }
-    }
-    return null;
   }
 
   public getPieceAt(file: number, rank: number): PieceRecord | null {
