@@ -1,7 +1,7 @@
-import { Object3D, Group } from "three";
+import { Object3D, Group, Vector3 } from "three";
 import type { Lifecycle } from "~/core";
 import type { PieceType, PieceColor } from "~/utils/types";
-import { squareToWorld } from "~/utils/utils";
+import { fromAlgebraic, getSquareWorldPosition } from "~/utils/utils";
 
 export class Piece extends Group implements Lifecycle {
   readonly type: PieceType;
@@ -29,11 +29,37 @@ export class Piece extends Group implements Lifecycle {
     this.receiveShadow = true;
   }
 
-  setSquare(file: number, rank: number, lift = 0.01) {
-    this.file = file;
-    this.rank = rank;
-    const p = squareToWorld(file, rank, 0);
-    this.position.set(p.x, p.y + lift, p.z);
+  public moveTo(toSquare: string, duration = 0.4): Promise<void> {
+    const { file, rank } = fromAlgebraic(toSquare);
+
+    const start = this.mesh.position.clone();
+
+    const endWorld = getSquareWorldPosition(file, rank);
+    const end = new Vector3(endWorld.x, start.y, endWorld.z);
+
+    const startTime = performance.now();
+    const ease = (t: number) => t * t * (3 - 2 * t);
+
+    return new Promise<void>((resolve) => {
+      const step = (now: number) => {
+        const t = Math.min(1, (now - startTime) / (duration * 1000));
+        const k = ease(t);
+
+        const pos = start.clone().lerp(end, k);
+        const arc = 0.01;
+        pos.y = start.y + arc * (1 - (2 * k - 1) ** 2);
+
+        this.mesh.position.copy(pos);
+        this.mesh.updateMatrixWorld();
+
+        if (t < 1) {
+          requestAnimationFrame(step);
+        } else {
+          resolve();
+        }
+      };
+      requestAnimationFrame(step);
+    });
   }
 
   public async load(): Promise<void> {}

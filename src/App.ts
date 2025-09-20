@@ -5,7 +5,7 @@ import { Composer } from "~/Composer";
 import { Controls } from "~/Controls";
 import { ChessScene } from "~/scenes/newChessScene";
 import { Chess } from "chess.js";
-import { toAlgebraic, fileOf, rankOf } from "~/utils/utils";
+import { toAlgebraic, fromAlgebraic, fileOf, rankOf } from "~/utils/utils";
 
 export interface AppParameters {
   canvas?: HTMLCanvasElement | OffscreenCanvas;
@@ -44,59 +44,58 @@ export class App implements Lifecycle {
       cellText.innerText = `${cellToAlg}`;
       const pieceText = document.querySelector(".piece") as HTMLElement;
       const piece = this.scene.board.boardState[rank][file];
-      console.log(piece);
       if (piece) {
         pieceText.innerText = `${piece.name}`;
       }
     }
   };
 
-  // private onClick = (ev: PointerEvent): void => {
-  //   const el = this.renderer.domElement as HTMLCanvasElement;
-  //   const rect = el.getBoundingClientRect();
-  //   const x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
-  //   const y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
-  //   this.pointerNdc.set(x, y);
+  private onClick = (ev: PointerEvent): void => {
+    const el = this.renderer.domElement as HTMLCanvasElement;
+    const rect = el.getBoundingClientRect();
+    const x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
+    this.pointerNdc.set(x, y);
 
-  //   const hit = this.scene.pickAt(this.pointerNdc, this.camera);
-  //   if (!hit) return;
+    const hit = this.scene.board.pickAt(this.pointerNdc, this.camera);
+    if (!hit) return;
 
-  //   const toAlg = hit.algebraic;
+    const toAlg = hit.algebraic;
 
-  //   if (!this.selectedSquare) {
-  //     const piece = this.scene.getPieceAt(hit.file, hit.rank);
-  //     if (!piece) return;
+    if (!this.selectedSquare) {
+      const piece = this.scene.board.boardState[hit.rank][hit.file];
+      if (!piece) return;
 
-  //     const turn = this.chess.turn() === "w" ? "white" : "black";
-  //     if (piece.color !== turn) return;
+      const turn = this.chess.turn() === "w" ? "white" : "black";
+      if (piece.color !== turn) return;
 
-  //     this.selectedSquare = toAlg;
-  //     return;
-  //   }
+      this.selectedSquare = toAlg;
+      return;
+    }
 
-  //   const fromAlg = this.selectedSquare;
-  //   this.selectedSquare = null;
+    const fromAlg = this.selectedSquare;
+    this.selectedSquare = null;
 
-  //   const move = this.chess.move({ from: fromAlg, to: toAlg, promotion: "q" });
-  //   if (!move) return;
+    const { file: fromFile, rank: fromRank } = fromAlgebraic(fromAlg);
 
-  //   const { file: fromFile, rank: fromRank } = fromAlgebraic(fromAlg);
+    const move = this.chess.move({ from: fromAlg, to: toAlg, promotion: "q" });
+    if (!move) return;
 
-  //   const id = this.scene.boardState[fromRank][fromFile];
-  //   if (!id) return;
+    const id = this.scene.board.boardState[fromRank][fromFile];
+    if (!id) return;
 
-  //   this.scene.animateMove(id, hit.file, hit.rank);
+    this.scene.board.move(fromAlg, toAlg);
 
-  //   if (this.chess.isCheckmate()) {
-  //     this.scene.triggerCheckmateEffect();
-  //   } else {
-  //     const endText = document.querySelector(".endText") as HTMLElement;
-  //     endText.innerText = "Game Over";
-  //     endText.style.opacity = "1.0";
-  //     const ruleText = document.querySelector(".ruleText") as HTMLElement;
-  //     ruleText.style.opacity = "0";
-  //   }
-  // };
+    // if (this.chess.isCheckmate()) {
+    //   // this.scene.triggerCheckmateEffect();
+    // } else {
+    //   const endText = document.querySelector(".endText") as HTMLElement;
+    //   endText.innerText = "Game Over";
+    //   endText.style.opacity = "1.0";
+    //   const ruleText = document.querySelector(".ruleText") as HTMLElement;
+    //   ruleText.style.opacity = "0";
+    // }
+  };
 
   public constructor({ canvas, debug = false }: AppParameters = {}) {
     this.debug = debug;
@@ -202,11 +201,11 @@ export class App implements Lifecycle {
       );
       this.pointerMoveBound = false;
     }
-    // if (this.controls.isAtGameView()) {
-    //   this.renderer.domElement.addEventListener("click", this.onClick);
-    // } else {
-    //   this.renderer.domElement.removeEventListener("click", this.onClick);
-    // }
+    if (this.controls.isAtGameView()) {
+      this.renderer.domElement.addEventListener("click", this.onClick);
+    } else {
+      this.renderer.domElement.removeEventListener("click", this.onClick);
+    }
   }
 
   /**

@@ -27,6 +27,7 @@ import {
   rankOf,
   toAlgebraic,
   getSquareWorldPosition,
+  fromAlgebraic,
 } from "~/utils/utils";
 
 import { ModelLibrary } from "~/utils/modelLibrary";
@@ -248,8 +249,6 @@ export class Board extends Group implements Lifecycle {
       king: 1,
     };
 
-    const liftY = 0.01;
-
     for (const color of piecesColor) {
       for (const type of piecesType) {
         const template = this.pieceTemplates[type + color];
@@ -276,6 +275,25 @@ export class Board extends Group implements Lifecycle {
         }
       }
     }
+  }
+
+  public move(fromSquare: string, toSquare: string) {
+    const { file: fromFile, rank: fromRank } = fromAlgebraic(fromSquare);
+    const { file: toFile, rank: toRank } = fromAlgebraic(toSquare);
+
+    const piece = this.boardState[fromRank][fromFile];
+    if (!piece) return;
+
+    const captured = this.boardState[toRank][toFile];
+    if (captured) {
+      this.piecesGroup.remove(captured);
+      captured.dispose();
+    }
+
+    this.boardState[fromRank][fromFile] = null;
+    this.boardState[toRank][toFile] = piece;
+
+    piece.moveTo(toSquare);
   }
 
   public update(): void {}

@@ -1,7 +1,6 @@
 import { Scene, PerspectiveCamera, AmbientLight } from "three";
 import type { Viewport, Clock, Lifecycle } from "~/core";
 import { Board } from "~/objects/Board";
-import { Piece } from "~/objects/Piece";
 
 export interface MainSceneParamaters {
   clock: Clock;
