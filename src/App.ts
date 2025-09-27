@@ -106,7 +106,7 @@ export class App implements Lifecycle {
       powerPreference: "high-performance",
       antialias: false,
       stencil: false,
-      depth: true,
+      depth: false,
     });
 
     this.viewport = new Viewport({
@@ -120,7 +120,6 @@ export class App implements Lifecycle {
       camera: this.camera,
       clock: this.clock,
     });
-    console.log(this.scene.board.boardState);
 
     this.composer = new Composer({
       renderer: this.renderer,
@@ -134,6 +133,7 @@ export class App implements Lifecycle {
       camera: this.camera,
       element: this.renderer.domElement,
       clock: this.clock,
+      chess: this.chess,
     });
 
     this.loop = new Loop({
@@ -146,7 +146,26 @@ export class App implements Lifecycle {
    */
   public async load(): Promise<void> {
     await Promise.all([this.composer.load(), this.scene.load()]);
+    // console.log("scene", this.scene);
+    const toOutline = [];
+    this.scene.board.traverse((child) => {
+      if (child.name.startsWith("piece_")) {
+        if (child.type === "Group") {
+          child.traverse((c) => {
+            if (c.type === "Mesh") {
+              toOutline.push(c);
+            }
+          });
+        } else {
+          toOutline.push(child);
+        }
+      }
+    });
+    // this.composer.OutlineEffect!.selection.set(this.scene.board.outlineTargets);
     // this.composer.OutlineEffect!.selection.set(this.scene.toOutline);
+    // console.log("Outline targets", this.scene.board.outlineTargets);
+    // console.log("Outline targets", this.scene.toOutline);
+    // console.log("selection", this.composer.OutlineEffect!.selection);
     if (this.debug) {
       this.gui = new (await import("./GUI")).GUI(this);
     }
@@ -187,6 +206,10 @@ export class App implements Lifecycle {
     this.viewport.update();
     this.scene.update();
     this.composer.update();
+
+    const turn = this.chess.turn() === "w" ? "white" : "black";
+    const turnText = document.querySelector(".turn") as HTMLElement;
+    turnText.innerText = `It's ${turn}'s turn`;
 
     if (this.controls.isAtGameView() && !this.pointerMoveBound) {
       this.renderer.domElement.addEventListener(

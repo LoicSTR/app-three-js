@@ -1,7 +1,7 @@
 import { Group, Object3D, Mesh, MeshStandardMaterial } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
-import type { PieceType, PieceColor } from "~/objects/Piece";
+import type { PieceType, PieceColor } from "~/utils/types";
 
 const modelsUrl = `${
   import.meta.env.BASE_URL
@@ -61,13 +61,13 @@ export class ModelLibrary {
     }
   }
 
-  getBoard(): Object3D {
+  public getBoard(): Object3D {
     const src = this.map["Board"];
     return src ? this.cloneDeep(src) : new Group();
   }
 
-  getPiece(type: PieceType, color: PieceColor): Object3D {
-    const key = `${capitalize(type)}_${capitalize(color)}`; // ex: King_White
+  public getPiece(type: PieceType, color: PieceColor): Object3D {
+    const key = `${capitalize(type)}_${capitalize(color)}`;
     const src = this.map[key];
     return src ? this.cloneDeep(src) : new Group();
   }
@@ -79,6 +79,7 @@ export class ModelLibrary {
         o.material = (o.material as MeshStandardMaterial).clone();
         o.castShadow = true;
         o.receiveShadow = true;
+        o.layers.mask = 5;
       }
     });
     return clone;

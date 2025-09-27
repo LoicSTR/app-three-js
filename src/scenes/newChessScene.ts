@@ -25,7 +25,7 @@ export class ChessScene extends Scene implements Lifecycle {
     this.board = new Board();
     this.add(this.board);
 
-    this.ambiantLight = new AmbientLight(0xffffff, 0.5);
+    this.ambiantLight = new AmbientLight(0xffffff, 1);
     this.add(this.ambiantLight);
   }
 

@@ -2,6 +2,7 @@ import { Pane } from "tweakpane";
 import * as EssentialsPlugin from "@tweakpane/plugin-essentials";
 import type { Lifecycle } from "~/core";
 import type { App } from "~/App";
+import { ORIGIN } from "~/utils/utils";
 
 export class GUI extends Pane implements Lifecycle {
   public app: App;
@@ -42,6 +43,19 @@ export class GUI extends Pane implements Lifecycle {
       this.app[lifecycleMethods[event.index[0]]]();
       this.toggleFpsGraph(this.app.loop.running);
     });
+
+    const boardFolder = this.addFolder({ title: "Board" });
+    const params = { originY: ORIGIN.y };
+    boardFolder
+      .addBinding(params, "originY", {
+        label: "Origin Y",
+        min: ORIGIN.y - 0.05,
+        max: ORIGIN.y + 0.05,
+        step: 0.0005,
+      })
+      .on("change", (ev: any) => {
+        this.app.scene.board.setOriginY(ev.value);
+      });
 
     this.applyStyle();
   }

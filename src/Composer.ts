@@ -1,4 +1,4 @@
-import type { WebGLRenderer, Scene, Camera } from "three";
+import type { WebGLRenderer, Scene, Camera, Mesh } from "three";
 
 import {
   EffectComposer,
@@ -27,10 +27,6 @@ export class Composer extends EffectComposer implements Lifecycle {
   private scene: Scene;
   private cam: Camera;
 
-  // public get camera(): Camera | undefined {
-  //   return this.renderPass.mainCamera;
-  // }
-
   public constructor({
     renderer,
     viewport,
@@ -58,6 +54,10 @@ export class Composer extends EffectComposer implements Lifecycle {
     this.effectPass = new EffectPass(this.cam, this.OutlineEffect);
 
     this.addPass(this.effectPass);
+  }
+
+  public setOutlineTargets(meshes: Mesh[]): void {
+    if (!this.OutlineEffect) return;
   }
 
   public update(): void {}

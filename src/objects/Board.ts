@@ -13,20 +13,20 @@ import {
   Vector3,
   Raycaster,
   Group,
+  AdditiveBlending,
 } from "three";
 
 import type { Lifecycle } from "~/core";
 
 import {
   CELL,
-  squareToWorld,
+  squareToLocal,
   ORIGIN,
   FILES,
   RANKS,
   fileOf,
   rankOf,
   toAlgebraic,
-  getSquareWorldPosition,
   fromAlgebraic,
 } from "~/utils/utils";
 
@@ -57,6 +57,8 @@ export class Board extends Group implements Lifecycle {
   private pieceTemplates: Record<string, Object3D> = {};
   public piecesGroup = new Group();
   public boardState: (Piece | null)[][];
+  public outlineTargets: Object3D[] = [];
+  private library = new ModelLibrary();
 
   public constructor() {
     super();
@@ -69,17 +71,62 @@ export class Board extends Group implements Lifecycle {
   }
 
   public async load(): Promise<void> {
-    const modelLibrary = new ModelLibrary();
-    await modelLibrary.waitReady();
-    this.board = modelLibrary.getBoard();
+    await this.library.waitReady();
+    this.board = this.library.getBoard();
     this.board.position.set(0, 0, 0);
     this.add(this.board);
 
     for (const t of piecesType)
       for (const c of piecesColor) {
-        this.pieceTemplates[t + c] = modelLibrary.getPiece(t, c);
+        this.pieceTemplates[t + c] = this.library.getPiece(t, c);
       }
     this.placeStartingPosition();
+  }
+
+  //   private collectOutlineTargets() {
+  //     console.log("Gorupe", this.piecesGroup);
+  //     this.outlineTargets = [];
+
+  //     this.piecesGroup.children.forEach((piece) => {
+  //       console.log("Piece", piece);
+  //       // If piece is a Piece instance, push its mesh property
+  //       if ((piece as Piece).mesh) {
+  //         this.outlineTargets.push((piece as Piece).mesh);
+  //       } else {
+  //         // Otherwise, traverse and collect Meshes
+  //         piece.traverse((child) => {
+  //           if (child instanceof Mesh) {
+  //             this.outlineTargets.push(child);
+  //           }
+  //         });
+  //       }
+  //     });
+  //   }
+  public setOriginY(newY: number): void {
+    const dy = newY - ORIGIN.y;
+    if (Math.abs(dy) < 1e-7) return;
+
+    ORIGIN.y = newY;
+
+    const m = new Matrix4();
+    let idx = 0;
+    for (let r = 0; r < RANKS; r++) {
+      for (let f = 0; f < FILES; f++, idx++) {
+        const c = squareToLocal(f, r, newY + 0.0001);
+        this.tiles.getMatrixAt(idx, m);
+        m.setPosition(c.x, c.y, c.z);
+        this.tiles.setMatrixAt(idx, m);
+      }
+    }
+    this.tiles.instanceMatrix.needsUpdate = true;
+    this.tiles.updateMatrixWorld(true);
+
+    this.piecesGroup.children.forEach((obj) => {
+      const piece = obj as Piece;
+      const pLocal = squareToLocal(piece.file, piece.rank, newY);
+      piece.position.set(pLocal.x, pLocal.y, pLocal.z);
+      piece.updateMatrixWorld(true);
+    });
   }
 
   private addInteractiveTiles() {
@@ -91,17 +138,21 @@ export class Board extends Group implements Lifecycle {
     geom.setAttribute("color", new BufferAttribute(white, 3));
     const mat = new MeshBasicMaterial({
       transparent: true,
-      opacity: 0.05,
+      opacity: 0.1,
       depthWrite: false,
       depthTest: true,
       vertexColors: true,
+      blending: AdditiveBlending,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
     });
     mat.color.set(0xffffff);
     mat.toneMapped = false;
 
     this.tiles = new InstancedMesh(geom, mat, FILES * RANKS);
     this.tiles.renderOrder = 2;
-    this.tiles.position.y = 0.0005;
+    this.tiles.position.y = 0;
     this.tiles.instanceMatrix.setUsage(DynamicDrawUsage);
     this.baseColors = new Float32Array(FILES * RANKS * 3);
     this.instanceColors = new Float32Array(FILES * RANKS * 3);
@@ -114,22 +165,17 @@ export class Board extends Group implements Lifecycle {
     let idx = 0;
     for (let r = 0; r < RANKS; r++) {
       for (let f = 0; f < FILES; f++) {
-        const c = squareToWorld(f, r, ORIGIN.y + 0.0005);
+        const c = squareToLocal(f, r, ORIGIN.y + 0.0001);
         m.makeTranslation(c.x, c.y, c.z);
         this.tiles.setMatrixAt(idx, m);
-        const color = new Color(0xffffff);
-
-        const isDark = (f + r) % 2 === 1;
-        const base = isDark ? color.setHex(0x000000) : color;
-        this.tiles.setColorAt(idx, base);
 
         const i3 = idx * 3;
-        this.instanceColors[i3 + 0] = base.r;
-        this.instanceColors[i3 + 1] = base.g;
-        this.instanceColors[i3 + 2] = base.b;
-        this.baseColors[i3 + 0] = base.r;
-        this.baseColors[i3 + 1] = base.g;
-        this.baseColors[i3 + 2] = base.b;
+        this.instanceColors[i3 + 0] = 0;
+        this.instanceColors[i3 + 1] = 0;
+        this.instanceColors[i3 + 2] = 0;
+        this.baseColors[i3 + 0] = 0;
+        this.baseColors[i3 + 1] = 0;
+        this.baseColors[i3 + 2] = 0;
         idx++;
       }
     }
@@ -175,6 +221,7 @@ export class Board extends Group implements Lifecycle {
     index: number;
     algebraic: string;
     world: Vector3;
+    local: Vector3;
   } | null {
     if (!this.tiles) return null;
 
@@ -194,12 +241,14 @@ export class Board extends Group implements Lifecycle {
 
     const file = fileOf(index);
     const rank = rankOf(index);
-    const world = squareToWorld(file, rank, ORIGIN.y + 0.0005);
+    const local = squareToLocal(file, rank, ORIGIN.y + 0.0001);
+    const world = this.localToWorld(local.clone());
+
     const algebraic = toAlgebraic(file, rank);
 
     this.highlightIndex(index);
 
-    return { file, rank, index, algebraic, world };
+    return { file, rank, index, algebraic, world, local };
   }
 
   public initialSquareFor(
@@ -266,9 +315,11 @@ export class Board extends Group implements Lifecycle {
           const { file, rank } = this.initialSquareFor(type, color, idxForType);
           const meshClone = template.clone(true);
           const piece = new Piece(type, color, file, rank, meshClone);
-          const pos = getSquareWorldPosition(file, rank);
-          meshClone.position.set(pos.x, meshClone.position.y, pos.z);
-          meshClone.updateMatrixWorld();
+
+          const pLocal = squareToLocal(file, rank);
+          piece.position.set(pLocal.x, pLocal.y, pLocal.z);
+
+          piece.modelRoot.position.set(0, 0, 0);
 
           this.piecesGroup.add(piece);
           this.boardState[rank][file] = piece;
@@ -293,7 +344,7 @@ export class Board extends Group implements Lifecycle {
     this.boardState[fromRank][fromFile] = null;
     this.boardState[toRank][toFile] = piece;
 
-    piece.moveTo(toSquare);
+    piece.moveTo(toSquare, this);
   }
 
   public update(): void {}

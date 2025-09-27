@@ -288,7 +288,7 @@ export class ChessScene extends Scene implements Lifecycle {
           ? `${color[0]}_${type}_${rawIndex}`
           : `${color[0]}_${type}`;
 
-        const sq = this.initialSquareFor(type, color, rawIndex, false);
+        const sq = this.initialSquareFor(type, color, rawIndex);
         if (!sq) {
           mesh.visible = false;
           return;
@@ -306,6 +306,41 @@ export class ChessScene extends Scene implements Lifecycle {
     });
 
     this.add(gltf.scene);
+  }
+
+  public initialSquareFor(
+    type: PieceType,
+    color: PieceColor,
+    index: number
+  ): { file: number; rank: number } {
+    const back = color === "white" ? 0 : 7;
+    const pawn = color === "white" ? 1 : 6;
+    const idx = Number.isFinite(index as number) ? (index as number) : 0;
+
+    switch (type) {
+      case "pawn": {
+        const file = Math.max(0, Math.min(7, idx - 1));
+        return { file, rank: pawn };
+      }
+      case "king":
+        return { file: 3, rank: back };
+      case "queen":
+        return { file: 4, rank: back };
+      case "rook": {
+        const side = idx % 2;
+        return { file: side === 0 ? 0 : 7, rank: back };
+      }
+      case "knight": {
+        const side = idx % 2;
+        return { file: side === 0 ? 1 : 6, rank: back };
+      }
+      case "bishop": {
+        const side = idx % 2;
+        return { file: side === 0 ? 2 : 5, rank: back };
+      }
+      default:
+        return { file: 0, rank: back };
+    }
   }
 
   private applyShaderToTargets(): void {
