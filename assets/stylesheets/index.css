@@ -13,9 +13,9 @@ html, body {
   box-sizing: border-box;
 }
 
-/* .tp-rotv {
+.tp-rotv {
   display: none;
-} */
+}
 
 body {
   margin: 0;
@@ -29,6 +29,7 @@ canvas {
   left: 0;
   object-fit: cover;
   position: fixed;
+  cursor: pointer;
 }
 
 /* .intro {

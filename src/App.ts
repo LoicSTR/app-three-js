@@ -6,6 +6,7 @@ import { Controls } from "~/Controls";
 import { ChessScene } from "~/scenes/newChessScene";
 import { Chess } from "chess.js";
 import { toAlgebraic, fromAlgebraic, fileOf, rankOf } from "~/utils/utils";
+import type { Square } from "chess.js";
 
 export interface AppParameters {
   canvas?: HTMLCanvasElement | OffscreenCanvas;
@@ -26,15 +27,150 @@ export class App implements Lifecycle {
   private pointerNdc: Vector2 = new Vector2();
   private pointerMoveBound = false;
   private chess = new Chess();
-  private selectedSquare: string | null = null;
 
-  private onPointerMove = (ev: PointerEvent): void => {
+  private state: "idle" | "selecting" | "animating" | "promoting" = "idle";
+  private selectedSquare: Square | null = null;
+  private legalTargets = new Map<Square, ReturnType<Chess["moves"]>>();
+  private onClickBound = (ev: PointerEvent) => void this.onClick(ev);
+  private clickListenerAttached = false;
+
+  private currentTurnColor(): "white" | "black" {
+    return this.chess.turn() === "w" ? "white" : "black";
+  }
+  private pieceAt(square: Square) {
+    const { file, rank } = fromAlgebraic(square);
+    return this.scene.board.boardState[rank][file];
+  }
+  private legalFor(square: Square) {
+    return this.chess.moves({ square, verbose: true }) as any[];
+  }
+  private pickSquareFromEvent = (ev: PointerEvent): Square | null => {
     const el = this.renderer.domElement as HTMLCanvasElement;
     const rect = el.getBoundingClientRect();
     const x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
     const y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
     this.pointerNdc.set(x, y);
-    this.scene.board.pickAt(this.pointerNdc, this.camera);
+    const hit = this.scene.board.pickAt(this.pointerNdc, this.camera);
+    return hit?.algebraic ?? null;
+  };
+  private selectSquare(square: Square) {
+    this.selectedSquare = square;
+    const moves = this.legalFor(square);
+    this.legalTargets.set(square, moves);
+  }
+  private clearSelection() {
+    this.selectedSquare = null;
+    this.legalTargets.clear();
+  }
+
+  private async applyMoveEffects(move: any) {
+    const fromAlg = move.from as Square;
+    const toAlg = move.to as Square;
+    const flags = move.flags as string;
+
+    // EN PASSANT : la capture n'est pas sur "to"
+    if (flags.includes("e")) {
+      const { file: toF, rank: toR } = fromAlgebraic(toAlg);
+      const moverColor: "w" | "b" = move.color;
+      const capR = moverColor === "w" ? toR - 1 : toR + 1;
+      const capAlg = toAlgebraic(toF, capR);
+      this.scene.board.removeAt(capAlg);
+    }
+
+    // ROQUE : bouger la tour
+    if (flags.includes("k") || flags.includes("q")) {
+      const { rank: kingRank } = fromAlgebraic(toAlg);
+      const isKingSide = flags.includes("k");
+      const rookFromFile = isKingSide ? 7 : 0;
+      const rookToFile = isKingSide ? 5 : 3;
+      const rookFrom = toAlgebraic(rookFromFile, kingRank);
+      const rookTo = toAlgebraic(rookToFile, kingRank);
+      await this.scene.board.move(rookFrom, rookTo);
+    }
+
+    // PROMOTION visuelle (chess.js a déjà promu côté logique)
+    if (flags.includes("p")) {
+      // move.promotion: 'q'|'r'|'b'|'n'
+      // Si tu veux remplacer le mesh du pion par la nouvelle pièce :
+      // this.scene.board.replacePieceAt(toAlg, move.promotion)
+      // (implé à faire : remove + add nouveau Piece conservant color)
+    }
+  }
+  private async afterMoveChecks() {
+    if (this.chess.isCheckmate()) {
+      // show "Checkmate!"
+    } else if (this.chess.inCheck()) {
+      // show "Check!"
+    } else if (this.chess.isDraw()) {
+      // show "Draw"
+    }
+    const turn = this.currentTurnColor();
+    (
+      document.querySelector(".turn") as HTMLElement
+    ).innerText = `It's ${turn}'s turn`;
+  }
+
+  private async onClick(ev: PointerEvent): Promise<void> {
+    if (this.state === "animating" || this.state === "promoting") return;
+
+    const clicked = this.pickSquareFromEvent(ev);
+    if (!clicked) {
+      this.clearSelection();
+      return;
+    }
+
+    if (!this.selectedSquare) {
+      const piece = this.pieceAt(clicked);
+      if (!piece || piece.color !== this.currentTurnColor()) {
+        this.clearSelection();
+        return;
+      }
+      this.selectSquare(clicked);
+      return;
+    }
+
+    if (clicked === this.selectedSquare) {
+      this.clearSelection();
+      return;
+    }
+
+    const target = this.pieceAt(clicked);
+    if (target && target.color === this.currentTurnColor()) {
+      this.selectSquare(clicked);
+      return;
+    }
+
+    const fromAlg = this.selectedSquare;
+    const legal = (
+      this.legalTargets.get(fromAlg) ?? this.legalFor(fromAlg)
+    ).find((m: any) => m.to === clicked);
+
+    if (!legal) {
+      // this.scene.board.illegalMove(clicked);
+      return;
+    }
+
+    let promotion = legal.promotion as "q" | "r" | "b" | "n" | undefined;
+    if (legal.flags.includes("p") && !promotion) {
+      promotion = "q";
+    }
+
+    const move = this.chess.move({ from: fromAlg, to: clicked, promotion });
+    if (!move) return;
+
+    this.state = "animating";
+    this.clearSelection();
+
+    await this.scene.board.move(fromAlg, clicked);
+
+    await this.applyMoveEffects(move);
+
+    this.state = "idle";
+    await this.afterMoveChecks();
+  }
+
+  private onPointerMove = (ev: PointerEvent): void => {
+    this.pickSquareFromEvent(ev);
     const cell = this.scene.board.highlightedIndex;
     if (cell !== null) {
       const file = fileOf(cell);
@@ -50,52 +186,60 @@ export class App implements Lifecycle {
     }
   };
 
-  private onClick = (ev: PointerEvent): void => {
-    const el = this.renderer.domElement as HTMLCanvasElement;
-    const rect = el.getBoundingClientRect();
-    const x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
-    const y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
-    this.pointerNdc.set(x, y);
+  // private onClick = (ev: PointerEvent): void => {
+  //   const el = this.renderer.domElement as HTMLCanvasElement;
+  //   const rect = el.getBoundingClientRect();
+  //   const x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+  //   const y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
+  //   this.pointerNdc.set(x, y);
 
-    const hit = this.scene.board.pickAt(this.pointerNdc, this.camera);
-    if (!hit) return;
+  //   const hit = this.scene.board.pickAt(this.pointerNdc, this.camera);
+  //   if (!hit) return;
 
-    const toAlg = hit.algebraic;
+  //   const toAlg = hit.algebraic;
 
-    if (!this.selectedSquare) {
-      const piece = this.scene.board.boardState[hit.rank][hit.file];
-      if (!piece) return;
+  //   if (!this.selectedSquare) {
+  //     const piece = this.scene.board.boardState[hit.rank][hit.file];
+  //     if (!piece) return;
 
-      const turn = this.chess.turn() === "w" ? "white" : "black";
-      if (piece.color !== turn) return;
+  //     const turn = this.chess.turn() === "w" ? "white" : "black";
+  //     if (piece.color !== turn) return;
 
-      this.selectedSquare = toAlg;
-      return;
-    }
+  //     this.selectedSquare = toAlg;
+  //     return;
+  //   }
 
-    const fromAlg = this.selectedSquare;
-    this.selectedSquare = null;
+  //   const fromAlg = this.selectedSquare;
+  //   this.selectedSquare = null;
 
-    const { file: fromFile, rank: fromRank } = fromAlgebraic(fromAlg);
+  //   const { file: fromFile, rank: fromRank } = fromAlgebraic(fromAlg);
 
-    const move = this.chess.move({ from: fromAlg, to: toAlg, promotion: "q" });
-    if (!move) return;
+  //   const move = this.chess.move({ from: fromAlg, to: toAlg, promotion: "q" });
+  //   if (!move) return;
 
-    const id = this.scene.board.boardState[fromRank][fromFile];
-    if (!id) return;
+  //   const id = this.scene.board.boardState[fromRank][fromFile];
+  //   if (!id) return;
 
-    this.scene.board.move(fromAlg, toAlg);
+  //   this.scene.board.move(fromAlg, toAlg);
+  //   if (move.isKingsideCastle()) {
+  //     this.scene.board.move();
+  //   }
+  //   if (move.isQueensideCastle()) {
+  //   }
+  //   if (move.isPromotion()) {
+  //   }
+  //   if (move.isEnPassant()) {
+  //   }
+  //   if (move.isCapture()) {
+  //   }
 
-    // if (this.chess.isCheckmate()) {
-    //   // this.scene.triggerCheckmateEffect();
-    // } else {
-    //   const endText = document.querySelector(".endText") as HTMLElement;
-    //   endText.innerText = "Game Over";
-    //   endText.style.opacity = "1.0";
-    //   const ruleText = document.querySelector(".ruleText") as HTMLElement;
-    //   ruleText.style.opacity = "0";
-    // }
-  };
+  //   if (this.chess.isCheckmate()) {
+  //   }
+  //   if (this.chess.inCheck()) {
+  //   }
+  //   if (this.chess.isDraw()) {
+  //   }
+  // };
 
   public constructor({ canvas, debug = false }: AppParameters = {}) {
     this.debug = debug;
@@ -224,10 +368,12 @@ export class App implements Lifecycle {
       );
       this.pointerMoveBound = false;
     }
-    if (this.controls.isAtGameView()) {
-      this.renderer.domElement.addEventListener("click", this.onClick);
-    } else {
-      this.renderer.domElement.removeEventListener("click", this.onClick);
+    if (this.controls.isAtGameView() && !this.clickListenerAttached) {
+      this.renderer.domElement.addEventListener("click", this.onClickBound);
+      this.clickListenerAttached = true;
+    } else if (!this.controls.isAtGameView() && this.clickListenerAttached) {
+      this.renderer.domElement.removeEventListener("click", this.onClickBound);
+      this.clickListenerAttached = false;
     }
   }
 

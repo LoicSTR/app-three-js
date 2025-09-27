@@ -17,6 +17,7 @@ import {
 } from "three";
 
 import type { Lifecycle } from "~/core";
+import type { Square } from "chess.js";
 
 import {
   CELL,
@@ -52,6 +53,7 @@ export class Board extends Group implements Lifecycle {
   private instanceColors!: Float32Array;
   public highlightedIndex: number | null = null;
   private highlightColor = new Color(1.0, 0.85, 0.0);
+  private errorColor = new Color(1.0, 0.0, 0.0);
   private raycaster: Raycaster = new Raycaster();
   private board!: Object3D;
   private pieceTemplates: Record<string, Object3D> = {};
@@ -68,6 +70,7 @@ export class Board extends Group implements Lifecycle {
     this.piecesGroup.name = "piecesGroup";
     this.add(this.piecesGroup);
     this.addInteractiveTiles();
+    console.log(this.boardState);
   }
 
   public async load(): Promise<void> {
@@ -219,7 +222,7 @@ export class Board extends Group implements Lifecycle {
     file: number;
     rank: number;
     index: number;
-    algebraic: string;
+    algebraic: Square;
     world: Vector3;
     local: Vector3;
   } | null {
@@ -328,12 +331,15 @@ export class Board extends Group implements Lifecycle {
     }
   }
 
-  public move(fromSquare: string, toSquare: string) {
+  public async move(
+    fromSquare: string,
+    toSquare: string
+  ): Promise<Piece | null> {
     const { file: fromFile, rank: fromRank } = fromAlgebraic(fromSquare);
     const { file: toFile, rank: toRank } = fromAlgebraic(toSquare);
 
     const piece = this.boardState[fromRank][fromFile];
-    if (!piece) return;
+    if (!piece) return null;
 
     const captured = this.boardState[toRank][toFile];
     if (captured) {
@@ -344,8 +350,46 @@ export class Board extends Group implements Lifecycle {
     this.boardState[fromRank][fromFile] = null;
     this.boardState[toRank][toFile] = piece;
 
-    piece.moveTo(toSquare, this);
+    await piece.moveTo(toSquare, this);
+    return piece;
   }
+
+  public removeAt(square: Square) {
+    const { file, rank } = fromAlgebraic(square);
+    const p = this.boardState[rank][file];
+    if (!p) return;
+    this.piecesGroup.remove(p);
+    p.dispose();
+    this.boardState[rank][file] = null;
+  }
+
+  // public illegalMove(square: Square) {
+  //   const { file, rank } = fromAlgebraic(square);
+
+  //   if (!this.tiles.instanceColor) return;
+  //   if (index === this.highlightedIndex) return;
+  //   let needsUpdate = false;
+
+  //   if (this.highlightedIndex !== null) {
+  //     const prev = this.highlightedIndex;
+  //     const i3 = prev * 3;
+  //     this.tiles.instanceColor.array[i3 + 0] = this.baseColors[i3 + 0];
+  //     this.tiles.instanceColor.array[i3 + 1] = this.baseColors[i3 + 1];
+  //     this.tiles.instanceColor.array[i3 + 2] = this.baseColors[i3 + 2];
+  //     needsUpdate = true;
+  //   }
+
+  //   this.highlightedIndex = index;
+
+  //   if (index !== null) {
+  //     const i3 = index * 3;
+  //     this.highlightColor.toArray(this.tiles.instanceColor.array, i3);
+  //     needsUpdate = true;
+  //   }
+  //   if (needsUpdate) {
+  //     this.tiles.instanceColor!.needsUpdate = true;
+  //   }
+  // }
 
   public update(): void {}
 

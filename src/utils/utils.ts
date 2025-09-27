@@ -1,4 +1,5 @@
 import { Vector3, Object3D } from "three";
+import type { Square } from "chess.js";
 
 export const FILES = 8,
   RANKS = 8;
@@ -30,10 +31,10 @@ export function rankOf(index: number): number {
   return Math.floor(index / FILES);
 }
 
-export function toAlgebraic(file: number, rank: number): string {
+export function toAlgebraic(file: number, rank: number): Square {
   // const flippedFile = FILES - 1 - file;
   const fileChar = String.fromCharCode("a".charCodeAt(0) + file);
-  return `${fileChar}${rank + 1}`;
+  return `${fileChar}${rank + 1}` as Square;
 }
 
 export function fromAlgebraic(square: string): { file: number; rank: number } {
